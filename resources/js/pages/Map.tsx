@@ -21,6 +21,143 @@ export default function Map() {
     const [fetchingNearby, setFetchingNearby] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
     const [nearby, setNearby] = useState<UserMarker[]>([]);
+    const [locationRequested, setLocationRequested] = useState<boolean>(false);
+    const [locationGranted, setLocationGranted] = useState<boolean>(false);
+
+    // Request user location
+    const requestLocation = useCallback(() => {
+        setLoading(true);
+        setError(null);
+        setLocationRequested(true);
+
+        const geoOptions = {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        };
+
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const userLat = position.coords.latitude;
+                const userLng = position.coords.longitude;
+
+                setLat(userLat);
+                setLng(userLng);
+                setLocationGranted(true);
+
+                // Update or create marker
+                if (userMarker.current) {
+                    userMarker.current.setLngLat([userLng, userLat]);
+                } else if (map.current) {
+                    const el = document.createElement('div');
+                    el.className = 'user-marker';
+                    el.style.backgroundColor = '#3b82f6';
+                    el.style.width = '20px';
+                    el.style.height = '20px';
+                    el.style.borderRadius = '50%';
+                    el.style.border = '3px solid white';
+                    el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+
+                    userMarker.current = new mapboxgl.Marker(el)
+                        .setLngLat([userLng, userLat])
+                        .addTo(map.current);
+                }
+
+                // Fly to user's position
+                if (map.current) {
+                    map.current.flyTo({
+                        center: [userLng, userLat],
+                        zoom: 14,
+                        essential: true,
+                        duration: 2000,
+                    });
+                }
+
+                // Update location on server
+                const now = Date.now();
+                if (now - lastUpdateTime.current >= 30000) {
+                    lastUpdateTime.current = now;
+
+                    try {
+                        const response = await fetch('/api/location/update', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                lat: userLat,
+                                lng: userLng,
+                            }),
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Failed to update location');
+                        }
+
+                        const data: LocationUpdate = await response.json();
+                        console.log('Location updated:', data);
+                    } catch (err) {
+                        console.error('Error updating location:', err);
+                        setError('Failed to update location on server');
+                    }
+                }
+
+                // Fetch nearby users
+                try {
+                    const nearbyResponse = await fetch(
+                        `/api/location/nearby?lat=${userLat}&lng=${userLng}&radius=${radius}`
+                    );
+
+                    if (nearbyResponse.ok) {
+                        const nearbyData: NearbyUsersResponse = await nearbyResponse.json();
+                        setNearby(nearbyData.users);
+                    }
+                } catch (err) {
+                    console.error('Error fetching nearby users:', err);
+                }
+
+                setLoading(false);
+            },
+            (error) => {
+                console.error('Geolocation error:', error);
+
+                let errorMessage = 'Unable to get your location. ';
+
+                switch (error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage += 'Location permission was denied. Please allow location access in your browser settings.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage += 'Your device cannot determine your location. On Mac: Open System Settings → Privacy & Security → Location Services and ensure it\'s enabled for your browser. Using default location (Kyiv, Ukraine) for now.';
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage += 'Location request timed out. Please try again.';
+                        break;
+                    default:
+                        errorMessage += 'An unknown error occurred: ' + error.message;
+                }
+
+                setError(errorMessage);
+                setLoading(false);
+
+                // If location is unavailable, use default coordinates and fetch nearby users
+                if (error.code === error.POSITION_UNAVAILABLE) {
+                    setLocationGranted(true); // Allow showing the map with default location
+
+                    // Fetch nearby users with default coordinates (Kyiv, Ukraine)
+                    fetch(`/api/location/nearby?lat=${lat}&lng=${lng}&radius=${radius}`)
+                        .then(res => res.ok ? res.json() : Promise.reject())
+                        .then((data: NearbyUsersResponse) => {
+                            setNearby(data.users);
+                            console.log('Nearby users (default location):', data.users);
+                        })
+                        .catch(err => console.error('Error fetching nearby users:', err));
+                }
+            },
+            geoOptions
+        );
+    }, [radius, lat, lng]);
 
     // Fetch nearby users
     const fetchNearbyUsers = useCallback(async (userLat: number, userLng: number, searchRadius: number) => {
@@ -78,97 +215,11 @@ export default function Map() {
         // Add navigation controls
         map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
-        // Get user's geolocation
-        if ('geolocation' in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                async (position) => {
-                    const userLat = position.coords.latitude;
-                    const userLng = position.coords.longitude;
+        // Don't auto-request location - wait for user gesture
+        setLoading(false);
 
-                    setLat(userLat);
-                    setLng(userLng);
-
-                    // Create blue marker for user's position
-                    const el = document.createElement('div');
-                    el.className = 'user-marker';
-                    el.style.backgroundColor = '#3b82f6';
-                    el.style.width = '20px';
-                    el.style.height = '20px';
-                    el.style.borderRadius = '50%';
-                    el.style.border = '3px solid white';
-                    el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
-
-                    // Add marker to map
-                    if (map.current) {
-                        userMarker.current = new mapboxgl.Marker(el)
-                            .setLngLat([userLng, userLat])
-                            .addTo(map.current);
-
-                        // Fly to user's position
-                        map.current.flyTo({
-                            center: [userLng, userLat],
-                            zoom: 14,
-                            essential: true,
-                            duration: 2000,
-                        });
-                    }
-
-                    // Send location to server with throttle
-                    const now = Date.now();
-                    if (now - lastUpdateTime.current >= 30000) {
-                        lastUpdateTime.current = now;
-
-                        try {
-                            const response = await fetch('/api/location/update', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Accept': 'application/json',
-                                },
-                                body: JSON.stringify({
-                                    lat: userLat,
-                                    lng: userLng,
-                                }),
-                            });
-
-                            if (!response.ok) {
-                                throw new Error('Failed to update location');
-                            }
-
-                            const data: LocationUpdate = await response.json();
-                            console.log('Location updated:', data);
-                        } catch (err) {
-                            console.error('Error updating location:', err);
-                            setError('Failed to update location on server');
-                        }
-                    }
-
-                    // Fetch nearby users inline
-                    try {
-                        const nearbyResponse = await fetch(
-                            `/api/location/nearby?lat=${userLat}&lng=${userLng}&radius=5`
-                        );
-
-                        if (nearbyResponse.ok) {
-                            const nearbyData: NearbyUsersResponse = await nearbyResponse.json();
-                            setNearby(nearbyData.users);
-                            console.log('Nearby users:', nearbyData.users);
-                        }
-                    } catch (err) {
-                        console.error('Error fetching nearby users:', err);
-                    }
-
-                    setLoading(false);
-                },
-                (error) => {
-                    console.error('Geolocation error:', error);
-                    setError('Unable to get your location. Please enable location services.');
-                    setLoading(false);
-                }
-            );
-        } else {
+        if (!('geolocation' in navigator)) {
             setError('Geolocation is not supported by your browser');
-            setLoading(false);
         }
 
         // Cleanup
@@ -179,7 +230,7 @@ export default function Map() {
             }
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [requestLocation]);
 
     // Update nearby users markers when nearby state changes
     useEffect(() => {
@@ -246,7 +297,7 @@ export default function Map() {
     // Refetch nearby users when radius changes
     useEffect(() => {
         if (!loading && lat && lng) {
-            fetchNearbyUsers(lat, lng, radius);
+            void fetchNearbyUsers(lat, lng, radius);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [radius, lat, lng, loading]);
@@ -286,8 +337,29 @@ export default function Map() {
             {/* Map Container */}
             <div ref={mapContainer} className="flex-1" />
 
+            {!locationGranted && !loading && !error && (
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-20">
+                    <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md text-center">
+                        <div className="mb-4">
+                            <svg className="w-16 h-16 mx-auto text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-2xl font-bold text-gray-900 mb-2">Enable Location</h3>
+                        <p className="text-gray-600 mb-6">To find nearby users, we need access to your location. Click the button below to allow location access.</p>
+                        <button
+                            onClick={requestLocation}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
+                        >
+                            Allow Location Access
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {loading && (
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-gray-900/90 text-white px-4 py-2 rounded-lg shadow-lg">
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-gray-900/90 text-white px-4 py-2 rounded-lg shadow-lg z-30">
                     <div className="flex items-center gap-2">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                         <span>Getting your location...</span>
@@ -296,8 +368,34 @@ export default function Map() {
             )}
 
             {error && (
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-red-600/90 text-white px-4 py-2 rounded-lg shadow-lg z-10">
-                    {error}
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-red-600/90 text-white px-4 py-3 rounded-lg shadow-lg z-30 max-w-lg">
+                    <div className="flex gap-3">
+                        <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <div className="flex-1 space-y-2">
+                            <p className="text-sm">{error}</p>
+                            {locationRequested && !locationGranted && (
+                                <button
+                                    onClick={requestLocation}
+                                    className="bg-white text-red-600 px-3 py-1 rounded text-sm font-medium hover:bg-red-50 transition-colors"
+                                >
+                                    Try Again
+                                </button>
+                            )}
+                            {locationGranted && (
+                                <p className="text-xs opacity-90">You can still browse the map and search for users in other locations.</p>
+                            )}
+                        </div>
+                        <button
+                            onClick={() => setError(null)}
+                            className="text-white hover:text-gray-200 transition-colors"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             )}
 
@@ -337,7 +435,7 @@ export default function Map() {
             <div className="w-80 bg-white shadow-2xl overflow-y-auto max-h-screen flex flex-col">
                 <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 z-20">
                     <h2 className="text-lg font-semibold text-gray-900">Nearby Users</h2>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <div className="text-sm text-gray-500 mt-1">
                         {fetchingNearby ? (
                             <span className="inline-flex items-center gap-1">
                                 <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-600"></div>
@@ -346,7 +444,7 @@ export default function Map() {
                         ) : (
                             `${nearby.length} ${nearby.length === 1 ? 'person' : 'people'} within ${radius} km`
                         )}
-                    </p>
+                    </div>
                 </div>
                 <div className="flex-1 overflow-y-auto">
                     <UserList users={nearby} isLoading={fetchingNearby} onUserClick={handleUserClick} />
