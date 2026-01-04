@@ -92,15 +92,18 @@ services:
         image: 'ngrok/ngrok:latest'
         restart: unless-stopped
         command:
-            - "http"
-            - "--domain=${NGROK_DOMAIN}"
-            - "laravel.test:80"
+            - "start"
+            - "--all"
+            - "--config"
+            - "/etc/ngrok.yml"
         ports:
             - 4040:4040
         networks:
             - sail
         environment:
             - NGROK_AUTHTOKEN=${NGROK_AUTH_TOKEN}
+        volumes:
+            - ./ngrok.yml:/etc/ngrok.yml
         depends_on:
             - laravel.test
 networks:

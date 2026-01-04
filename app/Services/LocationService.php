@@ -8,13 +8,14 @@ use App\Events\LocationUpdated;
 use App\Models\User;
 use App\Models\UserLocation;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 
 class LocationService
 {
     private const REDIS_GEO_KEY = 'user_locations';
+
     private const CACHE_TTL = 30; // seconds
+
     private const TEMP_USER_PREFIX = 'temp_';
 
     /**
@@ -27,13 +28,13 @@ class LocationService
 
         // Find or create temporary user
         $user = User::query()
-            ->where('email', self::TEMP_USER_PREFIX . $sessionId . '@temp.local')
+            ->where('email', self::TEMP_USER_PREFIX.$sessionId.'@temp.local')
             ->first();
 
-        if (!$user) {
+        if (! $user) {
             $user = User::query()->create([
                 'name' => 'Anonymous User',
-                'email' => self::TEMP_USER_PREFIX . $sessionId . '@temp.local',
+                'email' => self::TEMP_USER_PREFIX.$sessionId.'@temp.local',
                 'password' => bcrypt(str()->random(32)),
                 'age' => null,
                 'gender' => null,
@@ -94,7 +95,7 @@ class LocationService
             }
 
             // Extract user IDs
-            $userIds = collect($nearbyUserIds)->pluck(0)->map(fn($id) => (int) $id)->toArray();
+            $userIds = collect($nearbyUserIds)->pluck(0)->map(fn ($id) => (int) $id)->toArray();
 
             // Fetch user details from database with locations
             $users = User::query()
@@ -110,7 +111,7 @@ class LocationService
                 $distance = (float) $item[1];
                 $coords = $item[2] ?? null;
 
-                if (!isset($users[$userId])) {
+                if (! isset($users[$userId])) {
                     continue;
                 }
 
@@ -130,7 +131,7 @@ class LocationService
             }
 
             // Sort by distance
-            usort($results, fn($a, $b) => $a['distance'] <=> $b['distance']);
+            usort($results, fn ($a, $b) => $a['distance'] <=> $b['distance']);
 
             return $results;
         });

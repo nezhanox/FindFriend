@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\DB;
  * @property bool $is_visible
  * @property \Illuminate\Support\Carbon $last_updated
  * @property User|null $user
+ *
  * @method static \Illuminate\Database\Eloquent\Builder|UserLocation newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|UserLocation newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|UserLocation query()
@@ -29,6 +30,7 @@ use Illuminate\Support\Facades\DB;
  * @method static \Illuminate\Database\Eloquent\Builder|UserLocation whereLocation($value)
  * @method static \Illuminate\Database\Eloquent\Builder|UserLocation whereIsVisible($value)
  * @method static \Illuminate\Database\Eloquent\Builder|UserLocation whereLastUpdated($value)
+ *
  * @mixin \Illuminate\Database\Eloquent\Model
  */
 class UserLocation extends Model

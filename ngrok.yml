@@ -1,0 +1,15 @@
+version: "2"
+authtoken: ${NGROK_AUTHTOKEN}
+
+tunnels:
+  app:
+    proto: http
+    addr: laravel.test:80
+    domain: condor-pure-marginally.ngrok-free.app
+
+  vite:
+    proto: http
+    addr: laravel.test:5173
+    # Для Vite потрібен буде окремий безкоштовний домен або random URL
+    # Якщо у вас є другий домен, вкажіть тут:
+    # domain: your-vite-domain.ngrok-free.app

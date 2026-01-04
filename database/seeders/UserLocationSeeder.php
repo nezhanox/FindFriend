@@ -48,7 +48,7 @@ class UserLocationSeeder extends Seeder
 
             $user = User::query()->create([
                 'name' => $names[$i],
-                'email' => 'user' . ($i + 1) . '@example.com',
+                'email' => 'user'.($i + 1).'@example.com',
                 'password' => bcrypt('password'),
                 'avatar' => null,
                 'age' => mt_rand(18, 60),

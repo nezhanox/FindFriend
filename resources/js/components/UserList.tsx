@@ -1,12 +1,48 @@
+import { router } from '@inertiajs/react';
+import { MessageCircle } from 'lucide-react';
 import { UserMarker } from '@/types/location';
 
 interface UserListProps {
     users: UserMarker[];
     isLoading: boolean;
     onUserClick: (user: UserMarker) => void;
+    isAuthenticated?: boolean;
 }
 
-export default function UserList({ users, isLoading, onUserClick }: UserListProps) {
+export default function UserList({ users, isLoading, onUserClick, isAuthenticated = false }: UserListProps) {
+    const handleStartChat = async (e: React.MouseEvent, userId: number) => {
+        e.stopPropagation();
+
+        if (!isAuthenticated) {
+            router.visit('/login');
+            return;
+        }
+
+        try {
+            // Create or get conversation
+            const response = await fetch('/chat/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+                body: JSON.stringify({
+                    recipient_id: userId,
+                    content: 'Hi! 👋',
+                }),
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                // Redirect to chat
+                router.visit(`/chat`);
+            } else {
+                console.error('Failed to start chat');
+            }
+        } catch (error) {
+            console.error('Error starting chat:', error);
+        }
+    };
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-32">
@@ -97,6 +133,15 @@ export default function UserList({ users, isLoading, onUserClick }: UserListProp
                                     </>
                                 )}
                             </div>
+
+                            {/* Chat Button */}
+                            <button
+                                onClick={(e) => handleStartChat(e, user.id)}
+                                className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-all hover:scale-105 hover:shadow-md"
+                            >
+                                <MessageCircle className="size-3.5" />
+                                Chat
+                            </button>
                         </div>
                     </div>
                 </button>

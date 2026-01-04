@@ -1,13 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { router, usePage } from '@inertiajs/react';
 import { LocationUpdate, UserMarker, NearbyUsersResponse } from '@/types/location';
 import UserList from '@/Components/UserList';
 import { echo } from '@laravel/echo-react';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
+interface PageProps {
+    auth?: {
+        user?: {
+            id: number;
+            name: string;
+            email: string;
+        };
+    };
+}
+
 export default function Map() {
+    const { auth } = usePage<PageProps>().props;
+    const isAuthenticated = !!auth?.user;
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<mapboxgl.Map | null>(null);
     const userMarker = useRef<mapboxgl.Marker | null>(null);
@@ -181,6 +194,36 @@ export default function Map() {
         }
     }, []);
 
+    // Handle start chat
+    const handleStartChat = useCallback(async (userId: number) => {
+        if (!isAuthenticated) {
+            router.visit('/login');
+            return;
+        }
+
+        try {
+            const response = await fetch('/chat/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+                body: JSON.stringify({
+                    recipient_id: userId,
+                    content: 'Hi! 👋',
+                }),
+            });
+
+            if (response.ok) {
+                router.visit('/chat');
+            } else {
+                console.error('Failed to start chat');
+            }
+        } catch (error) {
+            console.error('Error starting chat:', error);
+        }
+    }, [isAuthenticated]);
+
     // Handle user click from list
     const handleUserClick = useCallback((user: UserMarker) => {
         if (!map.current) return;
@@ -265,23 +308,38 @@ export default function Map() {
             el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
             el.style.cursor = 'pointer';
 
-            // Create popup content
-            const popupContent = `
-                <div class="text-sm">
-                    <div class="font-semibold text-gray-900">${user.name}</div>
-                    <div class="text-gray-600 mt-1">
-                        Distance: ${user.distance} km
-                    </div>
-                    ${user.age ? `<div class="text-gray-600">Age: ${user.age}</div>` : ''}
-                    ${user.gender ? `<div class="text-gray-600 capitalize">Gender: ${user.gender}</div>` : ''}
+            // Create popup content with chat button
+            const popupContent = document.createElement('div');
+            popupContent.className = 'text-sm';
+            popupContent.innerHTML = `
+                <div class="font-semibold text-gray-900">${user.name}</div>
+                <div class="text-gray-600 mt-1">
+                    Distance: ${user.distance} km
                 </div>
+                ${user.age ? `<div class="text-gray-600">Age: ${user.age}</div>` : ''}
+                ${user.gender ? `<div class="text-gray-600 capitalize">Gender: ${user.gender}</div>` : ''}
             `;
+
+            // Add chat button
+            const chatButton = document.createElement('button');
+            chatButton.className = 'mt-2 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-all hover:scale-105 hover:shadow-md w-full justify-center';
+            chatButton.innerHTML = `
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                </svg>
+                Chat
+            `;
+            chatButton.onclick = (e) => {
+                e.stopPropagation();
+                handleStartChat(user.id);
+            };
+            popupContent.appendChild(chatButton);
 
             const popup = new mapboxgl.Popup({
                 offset: 25,
                 closeButton: true,
                 closeOnClick: false,
-            }).setHTML(popupContent);
+            }).setDOMContent(popupContent);
 
             // Create and add marker
             const marker = new mapboxgl.Marker(el)
@@ -292,7 +350,7 @@ export default function Map() {
             // Store marker reference
             nearbyMarkers.current.set(user.id, marker);
         });
-    }, [nearby]);
+    }, [nearby, handleStartChat]);
 
     // Refetch nearby users when radius changes
     useEffect(() => {
@@ -447,7 +505,12 @@ export default function Map() {
                     </div>
                 </div>
                 <div className="flex-1 overflow-y-auto">
-                    <UserList users={nearby} isLoading={fetchingNearby} onUserClick={handleUserClick} />
+                    <UserList
+                        users={nearby}
+                        isLoading={fetchingNearby}
+                        onUserClick={handleUserClick}
+                        isAuthenticated={isAuthenticated}
+                    />
                 </div>
             </div>
         </div>
