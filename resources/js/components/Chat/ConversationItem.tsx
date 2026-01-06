@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { Link } from '@inertiajs/react';
 import { Conversation } from '@/types/chat';
-import { Avatar, AvatarFallback, AvatarImage } from '@/Components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface ConversationItemProps {
     conversation: Conversation;
