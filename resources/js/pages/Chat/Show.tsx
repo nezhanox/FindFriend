@@ -1,7 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { usePage } from '@inertiajs/react';
 import { ConversationDetail, Message } from '@/types/chat';
-import ChatWindow from '@/Components/Chat/ChatWindow';
+import ChatWindow from '@/components/Chat/ChatWindow';
 
 interface Props {
     conversation: ConversationDetail;

@@ -22,7 +22,7 @@ interface PageProps {
 }
 
 export default function Map() {
-    const { auth, allUsers, currentUserId, sessionId } = usePage<PageProps>().props;
+    const { auth, allUsers, currentUserId } = usePage<PageProps>().props;
     const isAuthenticated = !!auth?.user;
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<mapboxgl.Map | null>(null);

@@ -33,7 +33,6 @@ export default function UserList({ users, isLoading, onUserClick, isAuthenticate
             });
 
             if (response.ok) {
-                const data = await response.json();
                 // Redirect to chat
                 router.visit(`/chat`);
             } else {

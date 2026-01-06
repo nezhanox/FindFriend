@@ -66,7 +66,7 @@ export default function ChatIndex({ conversations }: Props) {
                                     },
                                 }}
                             >
-                                {conversations.map((conversation, index) => (
+                                {conversations.map((conversation) => (
                                     <motion.div
                                         key={conversation.id}
                                         variants={{

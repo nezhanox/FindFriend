@@ -37,7 +37,7 @@ export default function ChatWindow({
         if (messages.length > initialMessages.length) {
             scrollToBottom();
         }
-    }, [messages.length]);
+    }, [messages.length, initialMessages.length]);
 
     // Listen for new messages via Echo
     useEffect(() => {
