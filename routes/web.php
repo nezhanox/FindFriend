@@ -17,6 +17,3 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/conversations/{conversation}/mark-as-read', [MessageController::class, 'markAsRead'])->name('conversations.mark-as-read');
     });
 });
-
-require __DIR__.'/auth.php';
-require __DIR__.'/settings.php';
