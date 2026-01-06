@@ -3,7 +3,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { router, usePage } from '@inertiajs/react';
 import { LocationUpdate, UserMarker, NearbyUsersResponse } from '@/types/location';
-import UserList from '@/Components/UserList';
+import UserList from '@/components/UserList';
 import { echo } from '@laravel/echo-react';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;

@@ -1,7 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { Conversation } from '@/types/chat';
-import ConversationItem from '@/Components/Chat/ConversationItem';
+import ConversationItem from '@/components/Chat/ConversationItem';
 import { MessageCircle } from 'lucide-react';
 
 interface Props {
