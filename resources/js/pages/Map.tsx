@@ -16,10 +16,13 @@ interface PageProps {
             email: string;
         };
     };
+    allUsers: UserMarker[];
+    currentUserId: number | null;
+    sessionId: string;
 }
 
 export default function Map() {
-    const { auth } = usePage<PageProps>().props;
+    const { auth, allUsers, currentUserId, sessionId } = usePage<PageProps>().props;
     const isAuthenticated = !!auth?.user;
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<mapboxgl.Map | null>(null);
@@ -275,6 +278,89 @@ export default function Map() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [requestLocation]);
 
+    // Render all users on map initialization
+    useEffect(() => {
+        if (!map.current || !allUsers || allUsers.length === 0) return;
+
+        // Clear existing markers first
+        nearbyMarkers.current.forEach((marker) => marker.remove());
+        nearbyMarkers.current.clear();
+
+        // Create markers for all users
+        allUsers.forEach((user) => {
+            const isCurrentUser = user.id === currentUserId;
+
+            // Create marker element with different styling for current user
+            const el = document.createElement('div');
+            el.className = isCurrentUser ? 'current-user-marker' : 'user-marker';
+            el.style.backgroundColor = isCurrentUser ? '#3b82f6' : '#ef4444';
+            el.style.width = isCurrentUser ? '20px' : '16px';
+            el.style.height = isCurrentUser ? '20px' : '16px';
+            el.style.borderRadius = '50%';
+            el.style.border = isCurrentUser ? '3px solid white' : '2px solid white';
+            el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+            el.style.cursor = 'pointer';
+
+            // Create popup content
+            const popupContent = document.createElement('div');
+            popupContent.className = 'text-sm';
+
+            if (isCurrentUser) {
+                popupContent.innerHTML = `
+                    <div class="font-semibold text-gray-900">You${user.name ? ` (${user.name})` : ''}</div>
+                    <div class="text-gray-600 mt-1 text-xs">This is your location</div>
+                `;
+            } else {
+                popupContent.innerHTML = `
+                    <div class="font-semibold text-gray-900">${user.name}</div>
+                    ${user.age ? `<div class="text-gray-600 text-xs mt-1">Age: ${user.age}</div>` : ''}
+                    ${user.gender ? `<div class="text-gray-600 text-xs capitalize">Gender: ${user.gender}</div>` : ''}
+                `;
+
+                // Add chat button for other users
+                const chatButton = document.createElement('button');
+                chatButton.className = 'mt-2 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-all hover:scale-105 hover:shadow-md w-full justify-center';
+                chatButton.innerHTML = `
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                    </svg>
+                    Chat
+                `;
+                chatButton.onclick = (e) => {
+                    e.stopPropagation();
+                    handleStartChat(user.id);
+                };
+                popupContent.appendChild(chatButton);
+            }
+
+            const popup = new mapboxgl.Popup({
+                offset: 25,
+                closeButton: true,
+                closeOnClick: false,
+            }).setDOMContent(popupContent);
+
+            // Create and add marker
+            const marker = new mapboxgl.Marker(el)
+                .setLngLat([user.lng, user.lat])
+                .setPopup(popup)
+                .addTo(map.current!);
+
+            // Store marker reference
+            nearbyMarkers.current.set(user.id, marker);
+
+            // If this is the current user, store in userMarker ref and fly to location
+            if (isCurrentUser) {
+                userMarker.current = marker;
+                map.current!.flyTo({
+                    center: [user.lng, user.lat],
+                    zoom: 14,
+                    essential: true,
+                    duration: 2000,
+                });
+            }
+        });
+    }, [allUsers, currentUserId, handleStartChat]);
+
     // Update nearby users markers when nearby state changes
     useEffect(() => {
         if (!map.current) return;
@@ -396,22 +482,24 @@ export default function Map() {
             <div ref={mapContainer} className="flex-1" />
 
             {!locationGranted && !loading && !error && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-20">
-                    <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md text-center">
-                        <div className="mb-4">
-                            <svg className="w-16 h-16 mx-auto text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="absolute top-20 left-4 bg-white rounded-lg shadow-lg p-4 z-10 max-w-xs">
+                    <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0">
+                            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
                         </div>
-                        <h3 className="text-2xl font-bold text-gray-900 mb-2">Enable Location</h3>
-                        <p className="text-gray-600 mb-6">To find nearby users, we need access to your location. Click the button below to allow location access.</p>
-                        <button
-                            onClick={requestLocation}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
-                        >
-                            Allow Location Access
-                        </button>
+                        <div className="flex-1">
+                            <h4 className="text-sm font-semibold text-gray-900 mb-1">Enable Location</h4>
+                            <p className="text-xs text-gray-600 mb-3">Find users near you by enabling location access</p>
+                            <button
+                                onClick={requestLocation}
+                                className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                            >
+                                Enable Location
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -492,21 +580,25 @@ export default function Map() {
             {/* User List Sidebar - Right */}
             <div className="w-80 bg-white shadow-2xl overflow-y-auto max-h-screen flex flex-col">
                 <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 z-20">
-                    <h2 className="text-lg font-semibold text-gray-900">Nearby Users</h2>
+                    <h2 className="text-lg font-semibold text-gray-900">
+                        {locationGranted ? 'Nearby Users' : 'All Users'}
+                    </h2>
                     <div className="text-sm text-gray-500 mt-1">
                         {fetchingNearby ? (
                             <span className="inline-flex items-center gap-1">
                                 <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-600"></div>
                                 Loading...
                             </span>
-                        ) : (
+                        ) : locationGranted ? (
                             `${nearby.length} ${nearby.length === 1 ? 'person' : 'people'} within ${radius} km`
+                        ) : (
+                            `${allUsers.length} ${allUsers.length === 1 ? 'person' : 'people'} online`
                         )}
                     </div>
                 </div>
                 <div className="flex-1 overflow-y-auto">
                     <UserList
-                        users={nearby}
+                        users={locationGranted ? nearby : allUsers}
                         isLoading={fetchingNearby}
                         onUserClick={handleUserClick}
                         isAuthenticated={isAuthenticated}
