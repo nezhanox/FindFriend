@@ -5,6 +5,8 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\Page\HomeController;
 use Illuminate\Support\Facades\Route;
 
+require __DIR__.'/auth.php';
+
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {

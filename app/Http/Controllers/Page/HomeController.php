@@ -30,13 +30,12 @@ class HomeController extends Controller
             ->values();
 
         $sessionId = $request->session()->getId();
-
         $currentUserId = null;
         if (auth()->check()) {
             $currentUserId = auth()->id();
         } else {
             $tempUser = User::query()
-                ->where('email', 'temp_' . $sessionId . '@temp.local')
+                ->where('email', 'temp_'.$sessionId.'@temp.local')
                 ->first();
             if ($tempUser) {
                 $currentUserId = $tempUser->getKey();
