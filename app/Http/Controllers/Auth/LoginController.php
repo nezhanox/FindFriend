@@ -15,15 +15,15 @@ use Inertia\Response;
 class LoginController extends Controller
 {
     /**
-     * Display the login page.
+     * Display the login view.
      */
     public function create(): Response
     {
-        return Inertia::render('auth/login');
+        return Inertia::render('Auth/Login');
     }
 
     /**
-     * Handle an authentication attempt.
+     * Handle an incoming authentication request.
      */
     public function store(LoginRequest $request): RedirectResponse
     {
@@ -31,7 +31,7 @@ class LoginController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('home'));
+        return redirect()->intended(route('home', absolute: false));
     }
 
     /**
@@ -45,6 +45,6 @@ class LoginController extends Controller
 
         $request->session()->regenerateToken();
 
-        return redirect()->route('home');
+        return redirect()->route('login');
     }
 }

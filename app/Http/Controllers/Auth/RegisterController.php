@@ -10,34 +10,37 @@ use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class RegisterController extends Controller
 {
     /**
-     * Display the registration page.
+     * Display the registration view.
      */
     public function create(): Response
     {
-        return Inertia::render('auth/register');
+        return Inertia::render('Auth/Register');
     }
 
     /**
      * Handle an incoming registration request.
+     *
+     * @throws \Illuminate\Validation\ValidationException
      */
     public function store(RegisterRequest $request): RedirectResponse
     {
         $user = User::query()->create([
-            'name' => $request->input('name'),
-            'email' => $request->input('email'),
-            'password' => Hash::make($request->input('password')),
+            'name' => $request->string('name')->value(),
+            'email' => $request->string('email')->lower()->value(),
+            'password' => $request->string('password')->value(),
+            'age' => $request->integer('age'),
+            'gender' => $request->string('gender')->value(),
         ]);
 
         event(new Registered($user));
 
-        Auth::login($user);
+        Auth::login($user, true);
 
         return redirect()->route('home');
     }

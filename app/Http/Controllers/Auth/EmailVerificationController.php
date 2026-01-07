@@ -19,9 +19,9 @@ class EmailVerificationController extends Controller
      */
     public function notice(Request $request): Response|RedirectResponse
     {
-        return $request->user()->hasVerifiedEmail()
-            ? redirect()->intended(route('home'))
-            : Inertia::render('auth/verify-email');
+        return $request->user()?->hasVerifiedEmail()
+                    ? redirect()->intended(route('home', absolute: false))
+                    : Inertia::render('Auth/VerifyEmail');
     }
 
     /**
@@ -30,23 +30,23 @@ class EmailVerificationController extends Controller
     public function verify(EmailVerificationRequest $request): RedirectResponse
     {
         if ($request->user()->hasVerifiedEmail()) {
-            return redirect()->intended(route('home').'?verified=1');
+            return redirect()->intended(route('home', absolute: false).'?verified=1');
         }
 
         if ($request->user()->markEmailAsVerified()) {
             event(new Verified($request->user()));
         }
 
-        return redirect()->intended(route('home').'?verified=1');
+        return redirect()->intended(route('home', absolute: false).'?verified=1');
     }
 
     /**
      * Send a new email verification notification.
      */
-    public function send(Request $request): RedirectResponse
+    public function resend(Request $request): RedirectResponse
     {
         if ($request->user()->hasVerifiedEmail()) {
-            return redirect()->intended(route('home'));
+            return redirect()->intended(route('home', absolute: false));
         }
 
         $request->user()->sendEmailVerificationNotification();
