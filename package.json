@@ -84,7 +84,7 @@
   },
   "lint-staged": {
     "*.php": [
-      "docker compose exec -T app vendor/bin/pint",
+      "bash -c 'for file in \"$@\"; do docker compose exec -T laravel.test vendor/bin/pint \"${file#$PWD/}\" || exit 1; done' _",
       "bash -c 'if grep -En \"\\b(dd|dump|ds|ray)\\(\" \"$0\"; then exit 1; fi'"
     ],
     "*.{js,jsx,ts,tsx}": [
