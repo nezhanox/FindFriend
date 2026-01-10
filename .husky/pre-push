@@ -10,7 +10,7 @@ fi
 
 # PHPStan
 echo "🔍 Running PHPStan..."
-docker compose exec -T app vendor/bin/phpstan analyse --memory-limit=2G || exit 1
+docker compose exec -T laravel.test vendor/bin/phpstan analyse --memory-limit=2G || exit 1
 
 # Frontend lint
 echo "🔍 Linting frontend..."
