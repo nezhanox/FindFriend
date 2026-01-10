@@ -106,6 +106,18 @@ services:
             - ./ngrok.yml:/etc/ngrok.yml
         depends_on:
             - laravel.test
+    adminer:
+        image: 'adminer:latest'
+        restart: unless-stopped
+        ports:
+            - '${ADMINER_PORT:-8081}:8080'
+        networks:
+            - sail
+        environment:
+            ADMINER_DEFAULT_SERVER: pgsql
+            ADMINER_DESIGN: 'dracula'
+        depends_on:
+            - pgsql
 networks:
     sail:
         driver: bridge
