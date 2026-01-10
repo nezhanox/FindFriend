@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Actions\Chat\CreateConversationAction;
 use App\Actions\Chat\MarkMessagesAsReadAction;
 use App\Models\Conversation;
+use App\Models\Message;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -74,7 +75,7 @@ class ConversationController extends Controller
             ->with('sender')
             ->orderBy('created_at', 'asc')
             ->get()
-            ->map(fn ($message): array => [
+            ->map(fn (Message $message): array => [
                 'id' => $message->getKey(),
                 'sender_id' => $message->sender_id,
                 'content' => $message->content,

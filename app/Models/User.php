@@ -32,7 +32,7 @@ use Illuminate\Notifications\Notifiable;
  * @method static \Illuminate\Database\Eloquent\Builder|User newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|User query()
  *
- * @mixin \Illuminate\Database\Eloquent\Builder
+ * @mixin \Illuminate\Database\Eloquent\Builder<User>
  */
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -78,6 +78,8 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Get the user's location.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne<UserLocation, covariant User>
      */
     public function location(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
@@ -86,6 +88,8 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Get the conversations where this user is the initiator.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<Conversation, covariant User>
      */
     public function initiatedConversations(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
@@ -94,6 +98,8 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Get the conversations where this user is the recipient.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<Conversation, covariant User>
      */
     public function receivedConversations(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
@@ -102,6 +108,8 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Get all conversations for this user (both initiated and received).
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, Conversation>
      */
     public function conversations(): \Illuminate\Database\Eloquent\Collection
     {
@@ -114,6 +122,8 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Get all messages sent by this user.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<Message, covariant User>
      */
     public function messages(): \Illuminate\Database\Eloquent\Relations\HasMany
     {

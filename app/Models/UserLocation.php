@@ -75,11 +75,13 @@ class UserLocation extends Model
      */
     protected function updatePostGISLocation(): void
     {
-        $this->location = DB::raw("ST_SetSRID(ST_MakePoint({$this->lng}, {$this->lat}), 4326)");
+        $this->attributes['location'] = DB::raw("ST_SetSRID(ST_MakePoint({$this->lng}, {$this->lat}), 4326)");
     }
 
     /**
      * Get the user that owns the location.
+     *
+     * @return BelongsTo<User, covariant UserLocation>
      */
     public function user(): BelongsTo
     {

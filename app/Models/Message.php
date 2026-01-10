@@ -31,14 +31,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder|Message whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Message whereUpdatedAt($value)
  *
- * @mixin \Illuminate\Database\Eloquent\Builder
+ * @mixin \Illuminate\Database\Eloquent\Builder<Message>
  */
 class Message extends Model
 {
     /**
      * The attributes that are mass assignable.
      *
-     * @var array<int, string>
+     * @var list<string>
      */
     protected $fillable = [
         'conversation_id',
@@ -61,6 +61,8 @@ class Message extends Model
 
     /**
      * Get the conversation this message belongs to.
+     *
+     * @return BelongsTo<Conversation, covariant Message>
      */
     public function conversation(): BelongsTo
     {
@@ -69,6 +71,8 @@ class Message extends Model
 
     /**
      * Get the user who sent the message.
+     *
+     * @return BelongsTo<User, covariant Message>
      */
     public function sender(): BelongsTo
     {

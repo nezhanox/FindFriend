@@ -81,13 +81,14 @@ class LocationService
 
         return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($lat, $lng, $radius): array {
             // Get nearby user IDs from Redis using GEORADIUS
+            /** @var array<int, array{0: string, 1: string, 2: array{0: string, 1: string}}> $nearbyUserIds */
             $nearbyUserIds = Redis::georadius(
                 self::REDIS_GEO_KEY,
                 $lng,
                 $lat,
                 $radius,
                 'km',
-                ['WITHDIST', 'WITHCOORD']
+                ['WITHDIST' => true, 'WITHCOORD' => true]
             );
 
             if (empty($nearbyUserIds)) {
@@ -109,7 +110,7 @@ class LocationService
             foreach ($nearbyUserIds as $item) {
                 $userId = (int) $item[0];
                 $distance = (float) $item[1];
-                $coords = $item[2] ?? null;
+                $coords = $item[2];
 
                 if (! isset($users[$userId])) {
                     continue;
@@ -125,8 +126,8 @@ class LocationService
                     'gender' => $user->gender,
                     'avatar' => $user->avatar,
                     'distance' => round($distance, 2),
-                    'lat' => $location?->lat ?? ($coords[1] ?? null),
-                    'lng' => $location?->lng ?? ($coords[0] ?? null),
+                    'lat' => $location->lat ?? ((float) $coords[1]),
+                    'lng' => $location->lng ?? ((float) $coords[0]),
                 ];
             }
 

@@ -33,14 +33,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @method static \Illuminate\Database\Eloquent\Builder|Conversation whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|Conversation whereUpdatedAt($value)
  *
- * @mixin \Illuminate\Database\Eloquent\Builder
+ * @mixin \Illuminate\Database\Eloquent\Builder<Conversation>
  */
 class Conversation extends Model
 {
     /**
      * The attributes that are mass assignable.
      *
-     * @var array<int, string>
+     * @var list<string>
      */
     protected $fillable = [
         'user_id',
@@ -62,6 +62,8 @@ class Conversation extends Model
 
     /**
      * Get the user who initiated the conversation.
+     *
+     * @return BelongsTo<User, covariant Conversation>
      */
     public function user(): BelongsTo
     {
@@ -70,6 +72,8 @@ class Conversation extends Model
 
     /**
      * Get the recipient of the conversation.
+     *
+     * @return BelongsTo<User, covariant Conversation>
      */
     public function recipient(): BelongsTo
     {
@@ -78,6 +82,8 @@ class Conversation extends Model
 
     /**
      * Get all messages in the conversation.
+     *
+     * @return HasMany<Message, covariant Conversation>
      */
     public function messages(): HasMany
     {
@@ -86,6 +92,8 @@ class Conversation extends Model
 
     /**
      * Get the last message in the conversation.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne<Message, covariant Conversation>
      */
     public function lastMessage(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
