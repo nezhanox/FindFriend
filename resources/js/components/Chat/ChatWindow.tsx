@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { router } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
+import axios from '@/bootstrap';
 import { Message, ConversationDetail } from '@/types/chat';
 import MessageBubble from './MessageBubble';
 import MessageInput from './MessageInput';
@@ -43,16 +43,16 @@ export default function ChatWindow({
     useEffect(() => {
         const channel = echo().private(`conversation.${conversation.id}`);
 
-        channel.listen('.MessageSent', (event: { message: Message }) => {
-            setMessages((prev) => [...prev, event.message]);
+        channel.listen('.MessageSent', (event: Message) => {
+            setMessages((prev) => [...prev, event]);
 
             // Mark as read if message is from other user
-            if (event.message.sender_id !== currentUserId) {
-                router.post(
-                    `/chat/conversations/${conversation.id}/mark-as-read`,
-                    {},
-                    { preserveScroll: true },
-                );
+            if (event.sender_id !== currentUserId) {
+                axios.post(
+                    `/chat/conversations/${conversation.id}/mark-as-read`
+                ).catch((error) => {
+                    console.error('Failed to mark message as read:', error);
+                });
             }
         });
 
@@ -76,21 +76,10 @@ export default function ChatWindow({
         setSending(true);
 
         try {
-            const response = await fetch('/chat/messages', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                },
-                body: JSON.stringify({
-                    content,
-                    recipient_id: conversation.other_user.id,
-                }),
+            await axios.post('/chat/messages', {
+                content,
+                recipient_id: conversation.other_user.id,
             });
-
-            if (!response.ok) {
-                throw new Error('Failed to send message');
-            }
 
             // Message will be added via Echo event
         } catch (error) {

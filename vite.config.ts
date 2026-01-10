@@ -24,20 +24,4 @@ export default defineConfig({
     esbuild: {
         jsx: 'automatic',
     },
-    server: {
-        host: '0.0.0.0',
-        port: 5173,
-        strictPort: true,
-        hmr: {
-            host: process.env.VITE_HMR_HOST || 'localhost',
-            protocol: process.env.VITE_HMR_PROTOCOL || 'ws',
-        },
-        cors: {
-            origin: '*',
-            credentials: true,
-        },
-        watch: {
-            usePolling: true,
-        },
-    },
 });

@@ -166,7 +166,6 @@ export default function Map() {
                         .then(res => res.ok ? res.json() : Promise.reject())
                         .then((data: NearbyUsersResponse) => {
                             setNearby(data.users);
-                            console.log('Nearby users (default location):', data.users);
                         })
                         .catch(err => console.error('Error fetching nearby users:', err));
                 }
@@ -189,7 +188,6 @@ export default function Map() {
 
             const nearbyData: NearbyUsersResponse = await nearbyResponse.json();
             setNearby(nearbyData.users);
-            console.log('Nearby users:', nearbyData.users);
         } catch (err) {
             console.error('Error fetching nearby users:', err);
         } finally {

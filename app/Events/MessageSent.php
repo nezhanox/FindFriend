@@ -49,12 +49,16 @@ class MessageSent implements ShouldBroadcastNow
      */
     public function broadcastWith(): array
     {
+        // Ensure sender is loaded
+        $this->message->loadMissing('sender');
+
         return [
             'id' => $this->message->getKey(),
             'conversation_id' => $this->message->conversation_id,
             'sender_id' => $this->message->sender_id,
             'content' => $this->message->content,
             'created_at' => $this->message->created_at?->toISOString(),
+            'read_at' => $this->message->read_at?->toISOString(),
             'sender' => [
                 'id' => $this->message->sender->getKey(),
                 'name' => $this->message->sender->name,

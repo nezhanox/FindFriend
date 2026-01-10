@@ -107,6 +107,7 @@ class ConversationController extends Controller
      */
     public function store(Request $request, CreateConversationAction $createConversation): \Illuminate\Http\JsonResponse
     {
+        ds($request->all());
         $request->validate([
             'recipient_id' => ['required', 'integer', 'exists:users,id'],
         ]);

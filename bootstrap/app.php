@@ -21,6 +21,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // Trust all proxies (for ngrok)
         $middleware->trustProxies(at: '*');
 
+        // Use custom CSRF middleware
+        $middleware->validateCsrfTokens(except: [
+            'chat/*',
+        ]);
+
         $middleware->web(append: [
             HandleAppearance::class,
             HandleInertiaRequests::class,

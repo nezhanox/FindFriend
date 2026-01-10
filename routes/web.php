@@ -9,7 +9,7 @@ require __DIR__.'/auth.php';
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware('auth')->group(function () {
     // Chat routes
     Route::prefix('chat')->group(function () {
         Route::get('/', [ConversationController::class, 'index'])->name('chat.index');
