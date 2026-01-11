@@ -88,7 +88,7 @@ class LocationService
                 $lat,
                 $radius,
                 'km',
-                ['WITHDIST', 'WITHCOORD']
+                ['WITHDIST' => true, 'WITHCOORD' => true]
             );
 
             if (empty($nearbyUserIds)) {
