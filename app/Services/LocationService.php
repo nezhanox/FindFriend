@@ -88,7 +88,7 @@ class LocationService
                 $lat,
                 $radius,
                 'km',
-                ['WITHDIST' => true, 'WITHCOORD' => true]
+                ['WITHDIST', 'WITHCOORD']
             );
 
             if (empty($nearbyUserIds)) {
@@ -126,8 +126,8 @@ class LocationService
                     'gender' => $user->gender,
                     'avatar' => $user->avatar,
                     'distance' => round($distance, 2),
-                    'lat' => $location->lat ?? ((float) $coords[1]),
-                    'lng' => $location->lng ?? ((float) $coords[0]),
+                    'lat' => $location->lat ?? (float) $coords[1],
+                    'lng' => $location->lng ?? (float) $coords[0],
                 ];
             }
 

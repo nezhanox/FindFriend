@@ -1,10 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import UserList from '@/components/UserList';
+import {
+    LocationUpdate,
+    NearbyUsersResponse,
+    UserMarker,
+} from '@/types/location';
+import { router, usePage } from '@inertiajs/react';
+import { echo } from '@laravel/echo-react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { router, usePage } from '@inertiajs/react';
-import { LocationUpdate, UserMarker, NearbyUsersResponse } from '@/types/location';
-import UserList from '@/components/UserList';
-import { echo } from '@laravel/echo-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
@@ -27,7 +31,9 @@ export default function Map() {
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<mapboxgl.Map | null>(null);
     const userMarker = useRef<mapboxgl.Marker | null>(null);
-    const nearbyMarkers = useRef<Map<number, mapboxgl.Marker>>(new globalThis.Map());
+    const nearbyMarkers = useRef<Map<number, mapboxgl.Marker>>(
+        new globalThis.Map(),
+    );
     const lastUpdateTime = useRef<number>(0);
     const [lng, setLng] = useState<number>(30.5234);
     const [lat, setLat] = useState<number>(50.4501);
@@ -39,6 +45,7 @@ export default function Map() {
     const [nearby, setNearby] = useState<UserMarker[]>([]);
     const [locationRequested, setLocationRequested] = useState<boolean>(false);
     const [locationGranted, setLocationGranted] = useState<boolean>(false);
+    const [showSidebar, setShowSidebar] = useState<boolean>(false);
 
     // Request user location
     const requestLocation = useCallback(() => {
@@ -49,7 +56,7 @@ export default function Map() {
         const geoOptions = {
             enableHighAccuracy: true,
             timeout: 10000,
-            maximumAge: 0
+            maximumAge: 0,
         };
 
         navigator.geolocation.getCurrentPosition(
@@ -99,7 +106,7 @@ export default function Map() {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
-                                'Accept': 'application/json',
+                                Accept: 'application/json',
                             },
                             body: JSON.stringify({
                                 lat: userLat,
@@ -122,11 +129,12 @@ export default function Map() {
                 // Fetch nearby users
                 try {
                     const nearbyResponse = await fetch(
-                        `/api/location/nearby?lat=${userLat}&lng=${userLng}&radius=${radius}`
+                        `/api/location/nearby?lat=${userLat}&lng=${userLng}&radius=${radius}`,
                     );
 
                     if (nearbyResponse.ok) {
-                        const nearbyData: NearbyUsersResponse = await nearbyResponse.json();
+                        const nearbyData: NearbyUsersResponse =
+                            await nearbyResponse.json();
                         setNearby(nearbyData.users);
                     }
                 } catch (err) {
@@ -142,16 +150,20 @@ export default function Map() {
 
                 switch (error.code) {
                     case error.PERMISSION_DENIED:
-                        errorMessage += 'Location permission was denied. Please allow location access in your browser settings.';
+                        errorMessage +=
+                            'Location permission was denied. Please allow location access in your browser settings.';
                         break;
                     case error.POSITION_UNAVAILABLE:
-                        errorMessage += 'Your device cannot determine your location. On Mac: Open System Settings → Privacy & Security → Location Services and ensure it\'s enabled for your browser. Using default location (Kyiv, Ukraine) for now.';
+                        errorMessage +=
+                            "Your device cannot determine your location. On Mac: Open System Settings → Privacy & Security → Location Services and ensure it's enabled for your browser. Using default location (Kyiv, Ukraine) for now.";
                         break;
                     case error.TIMEOUT:
-                        errorMessage += 'Location request timed out. Please try again.';
+                        errorMessage +=
+                            'Location request timed out. Please try again.';
                         break;
                     default:
-                        errorMessage += 'An unknown error occurred: ' + error.message;
+                        errorMessage +=
+                            'An unknown error occurred: ' + error.message;
                 }
 
                 setError(errorMessage);
@@ -162,68 +174,82 @@ export default function Map() {
                     setLocationGranted(true); // Allow showing the map with default location
 
                     // Fetch nearby users with default coordinates (Kyiv, Ukraine)
-                    fetch(`/api/location/nearby?lat=${lat}&lng=${lng}&radius=${radius}`)
-                        .then(res => res.ok ? res.json() : Promise.reject())
+                    fetch(
+                        `/api/location/nearby?lat=${lat}&lng=${lng}&radius=${radius}`,
+                    )
+                        .then((res) => (res.ok ? res.json() : Promise.reject()))
                         .then((data: NearbyUsersResponse) => {
                             setNearby(data.users);
                         })
-                        .catch(err => console.error('Error fetching nearby users:', err));
+                        .catch((err) =>
+                            console.error('Error fetching nearby users:', err),
+                        );
                 }
             },
-            geoOptions
+            geoOptions,
         );
     }, [radius, lat, lng]);
 
     // Fetch nearby users
-    const fetchNearbyUsers = useCallback(async (userLat: number, userLng: number, searchRadius: number) => {
-        setFetchingNearby(true);
-        try {
-            const nearbyResponse = await fetch(
-                `/api/location/nearby?lat=${userLat}&lng=${userLng}&radius=${searchRadius}`
-            );
+    const fetchNearbyUsers = useCallback(
+        async (userLat: number, userLng: number, searchRadius: number) => {
+            setFetchingNearby(true);
+            try {
+                const nearbyResponse = await fetch(
+                    `/api/location/nearby?lat=${userLat}&lng=${userLng}&radius=${searchRadius}`,
+                );
 
-            if (!nearbyResponse.ok) {
-                throw new Error('Failed to fetch nearby users');
+                if (!nearbyResponse.ok) {
+                    throw new Error('Failed to fetch nearby users');
+                }
+
+                const nearbyData: NearbyUsersResponse =
+                    await nearbyResponse.json();
+                setNearby(nearbyData.users);
+            } catch (err) {
+                console.error('Error fetching nearby users:', err);
+            } finally {
+                setFetchingNearby(false);
             }
-
-            const nearbyData: NearbyUsersResponse = await nearbyResponse.json();
-            setNearby(nearbyData.users);
-        } catch (err) {
-            console.error('Error fetching nearby users:', err);
-        } finally {
-            setFetchingNearby(false);
-        }
-    }, []);
+        },
+        [],
+    );
 
     // Handle start chat
-    const handleStartChat = useCallback(async (userId: number) => {
-        if (!isAuthenticated) {
-            router.visit('/login');
-            return;
-        }
-
-        try {
-            const response = await fetch('/chat/messages', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                },
-                body: JSON.stringify({
-                    recipient_id: userId,
-                    content: 'Hi! 👋',
-                }),
-            });
-
-            if (response.ok) {
-                router.visit('/chat');
-            } else {
-                console.error('Failed to start chat');
+    const handleStartChat = useCallback(
+        async (userId: number) => {
+            if (!isAuthenticated) {
+                router.visit('/login');
+                return;
             }
-        } catch (error) {
-            console.error('Error starting chat:', error);
-        }
-    }, [isAuthenticated]);
+
+            try {
+                const response = await fetch('/chat/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN':
+                            document
+                                .querySelector('meta[name="csrf-token"]')
+                                ?.getAttribute('content') || '',
+                    },
+                    body: JSON.stringify({
+                        recipient_id: userId,
+                        content: 'Hi! 👋',
+                    }),
+                });
+
+                if (response.ok) {
+                    router.visit('/chat');
+                } else {
+                    console.error('Failed to start chat');
+                }
+            } catch (error) {
+                console.error('Error starting chat:', error);
+            }
+        },
+        [isAuthenticated],
+    );
 
     // Handle user click from list
     const handleUserClick = useCallback((user: UserMarker) => {
@@ -290,12 +316,16 @@ export default function Map() {
 
             // Create marker element with different styling for current user
             const el = document.createElement('div');
-            el.className = isCurrentUser ? 'current-user-marker' : 'user-marker';
+            el.className = isCurrentUser
+                ? 'current-user-marker'
+                : 'user-marker';
             el.style.backgroundColor = isCurrentUser ? '#3b82f6' : '#ef4444';
             el.style.width = isCurrentUser ? '20px' : '16px';
             el.style.height = isCurrentUser ? '20px' : '16px';
             el.style.borderRadius = '50%';
-            el.style.border = isCurrentUser ? '3px solid white' : '2px solid white';
+            el.style.border = isCurrentUser
+                ? '3px solid white'
+                : '2px solid white';
             el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
             el.style.cursor = 'pointer';
 
@@ -317,7 +347,8 @@ export default function Map() {
 
                 // Add chat button for other users
                 const chatButton = document.createElement('button');
-                chatButton.className = 'mt-2 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-all hover:scale-105 hover:shadow-md w-full justify-center';
+                chatButton.className =
+                    'mt-2 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-all hover:scale-105 hover:shadow-md w-full justify-center';
                 chatButton.innerHTML = `
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
@@ -406,7 +437,8 @@ export default function Map() {
 
             // Add chat button
             const chatButton = document.createElement('button');
-            chatButton.className = 'mt-2 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-all hover:scale-105 hover:shadow-md w-full justify-center';
+            chatButton.className =
+                'mt-2 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-all hover:scale-105 hover:shadow-md w-full justify-center';
             chatButton.innerHTML = `
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
@@ -449,24 +481,27 @@ export default function Map() {
         const echoInstance = echo();
         const channel = echoInstance.channel('map');
 
-        channel.listen('.LocationUpdated', (event: { userId: number; lat: number; lng: number }) => {
-            console.log('Location update received:', event);
+        channel.listen(
+            '.LocationUpdated',
+            (event: { userId: number; lat: number; lng: number }) => {
+                console.log('Location update received:', event);
 
-            // Update the marker position if it exists
-            const marker = nearbyMarkers.current.get(event.userId);
-            if (marker) {
-                marker.setLngLat([event.lng, event.lat]);
-            }
+                // Update the marker position if it exists
+                const marker = nearbyMarkers.current.get(event.userId);
+                if (marker) {
+                    marker.setLngLat([event.lng, event.lat]);
+                }
 
-            // Update the user in nearby list
-            setNearby((prevNearby) =>
-                prevNearby.map((user) =>
-                    user.id === event.userId
-                        ? { ...user, lat: event.lat, lng: event.lng }
-                        : user
-                )
-            );
-        });
+                // Update the user in nearby list
+                setNearby((prevNearby) =>
+                    prevNearby.map((user) =>
+                        user.id === event.userId
+                            ? { ...user, lat: event.lat, lng: event.lng }
+                            : user,
+                    ),
+                );
+            },
+        );
 
         return () => {
             channel.stopListening('.LocationUpdated');
@@ -475,25 +510,44 @@ export default function Map() {
     }, []);
 
     return (
-        <div className="relative w-full h-screen flex">
+        <div className="relative flex h-screen w-full flex-col md:flex-row">
             {/* Map Container */}
             <div ref={mapContainer} className="flex-1" />
 
             {!locationGranted && !loading && !error && (
-                <div className="absolute top-20 left-4 bg-white rounded-lg shadow-lg p-4 z-10 max-w-xs">
-                    <div className="flex items-start gap-3">
+                <div className="absolute top-4 left-1/2 z-10 w-[calc(100%-2rem)] max-w-xs -translate-x-1/2 rounded-lg bg-white p-3 shadow-lg md:top-20 md:left-4 md:w-auto md:translate-x-0 md:p-4">
+                    <div className="flex items-start gap-2 md:gap-3">
                         <div className="flex-shrink-0">
-                            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <svg
+                                className="h-5 w-5 text-blue-600 md:h-6 md:w-6"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                                />
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                                />
                             </svg>
                         </div>
                         <div className="flex-1">
-                            <h4 className="text-sm font-semibold text-gray-900 mb-1">Enable Location</h4>
-                            <p className="text-xs text-gray-600 mb-3">Find users near you by enabling location access</p>
+                            <h4 className="mb-1 text-xs font-semibold text-gray-900 md:text-sm">
+                                Enable Location
+                            </h4>
+                            <p className="mb-2 text-xs text-gray-600 md:mb-3">
+                                Find users near you by enabling location access
+                            </p>
                             <button
                                 onClick={requestLocation}
-                                className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                                className="w-full rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700 md:px-4 md:py-2 md:text-sm"
                             >
                                 Enable Location
                             </button>
@@ -503,40 +557,65 @@ export default function Map() {
             )}
 
             {loading && (
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-gray-900/90 text-white px-4 py-2 rounded-lg shadow-lg z-30">
+                <div className="absolute top-4 left-1/2 z-30 -translate-x-1/2 rounded-lg bg-gray-900/90 px-3 py-2 text-xs text-white shadow-lg md:px-4 md:text-sm">
                     <div className="flex items-center gap-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        <span>Getting your location...</span>
+                        <div className="h-3 w-3 animate-spin rounded-full border-b-2 border-white md:h-4 md:w-4"></div>
+                        <span className="whitespace-nowrap">
+                            Getting your location...
+                        </span>
                     </div>
                 </div>
             )}
 
             {error && (
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-red-600/90 text-white px-4 py-3 rounded-lg shadow-lg z-30 max-w-lg">
-                    <div className="flex gap-3">
-                        <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                <div className="absolute top-4 left-1/2 z-30 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 rounded-lg bg-red-600/90 px-3 py-2 text-white shadow-lg md:px-4 md:py-3">
+                    <div className="flex gap-2 md:gap-3">
+                        <svg
+                            className="mt-0.5 h-4 w-4 flex-shrink-0 md:h-5 md:w-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                            />
                         </svg>
-                        <div className="flex-1 space-y-2">
-                            <p className="text-sm">{error}</p>
+                        <div className="flex-1 space-y-1 md:space-y-2">
+                            <p className="text-xs md:text-sm">{error}</p>
                             {locationRequested && !locationGranted && (
                                 <button
                                     onClick={requestLocation}
-                                    className="bg-white text-red-600 px-3 py-1 rounded text-sm font-medium hover:bg-red-50 transition-colors"
+                                    className="rounded bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 md:px-3 md:text-sm"
                                 >
                                     Try Again
                                 </button>
                             )}
                             {locationGranted && (
-                                <p className="text-xs opacity-90">You can still browse the map and search for users in other locations.</p>
+                                <p className="text-xs opacity-90">
+                                    You can still browse the map and search for
+                                    users in other locations.
+                                </p>
                             )}
                         </div>
                         <button
                             onClick={() => setError(null)}
-                            className="text-white hover:text-gray-200 transition-colors"
+                            className="flex-shrink-0 text-white transition-colors hover:text-gray-200"
                         >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            <svg
+                                className="h-4 w-4 md:h-5 md:w-5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M6 18L18 6M6 6l12 12"
+                                />
                             </svg>
                         </button>
                     </div>
@@ -544,11 +623,15 @@ export default function Map() {
             )}
 
             {/* Radius Control - Top Left */}
-            <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-4 z-10 w-64">
-                <div className="space-y-2">
+            <div className="absolute top-16 left-2 z-10 w-[calc(100%-1rem)] max-w-[200px] rounded-lg bg-white p-2 shadow-lg md:top-4 md:left-4 md:max-w-xs md:p-4">
+                <div className="space-y-1 md:space-y-2">
                     <div className="flex items-center justify-between">
-                        <label className="text-sm font-semibold text-gray-700">Search Radius</label>
-                        <span className="text-sm font-medium text-blue-600">{radius} km</span>
+                        <label className="text-xs font-semibold text-gray-700 md:text-sm">
+                            Radius
+                        </label>
+                        <span className="text-xs font-medium text-blue-600 md:text-sm">
+                            {radius} km
+                        </span>
                     </div>
                     <input
                         type="range"
@@ -556,42 +639,97 @@ export default function Map() {
                         max="50"
                         value={radius}
                         onChange={(e) => setRadius(Number(e.target.value))}
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                        className="slider h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-gray-200 md:h-2"
                         style={{
                             background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(radius / 50) * 100}%, #e5e7eb ${(radius / 50) * 100}%, #e5e7eb 100%)`,
                         }}
                     />
-                    <div className="flex justify-between text-xs text-gray-500">
+                    <div className="flex justify-between text-[10px] text-gray-500 md:text-xs">
                         <span>1 km</span>
                         <span>50 km</span>
                     </div>
                 </div>
             </div>
 
-            {/* Info Panel - Bottom Left */}
-            <div className="absolute bottom-4 left-4 bg-gray-900/90 text-white px-4 py-2 rounded-lg shadow-lg text-sm space-y-1 z-10">
+            {/* Info Panel - Bottom Left (hidden on mobile) */}
+            <div className="absolute bottom-4 left-4 z-10 hidden space-y-0.5 rounded-lg bg-gray-900/90 px-3 py-1.5 text-xs text-white shadow-lg md:block">
                 <div>Lat: {lat.toFixed(4)}</div>
                 <div>Lng: {lng.toFixed(4)}</div>
                 <div>Zoom: {zoom.toFixed(2)}</div>
             </div>
 
+            {/* Toggle Sidebar Button - Mobile Only */}
+            <button
+                onClick={() => setShowSidebar(!showSidebar)}
+                className="absolute right-4 bottom-4 z-20 rounded-full bg-blue-600 p-3 text-white shadow-lg transition-colors hover:bg-blue-700 md:hidden"
+                aria-label="Toggle user list"
+            >
+                <svg
+                    className="h-6 w-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    {showSidebar ? (
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                        />
+                    ) : (
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                        />
+                    )}
+                </svg>
+            </button>
+
             {/* User List Sidebar - Right */}
-            <div className="w-80 bg-white shadow-2xl overflow-y-auto max-h-screen flex flex-col">
-                <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 z-20">
-                    <h2 className="text-lg font-semibold text-gray-900">
-                        {locationGranted ? 'Nearby Users' : 'All Users'}
-                    </h2>
-                    <div className="text-sm text-gray-500 mt-1">
-                        {fetchingNearby ? (
-                            <span className="inline-flex items-center gap-1">
-                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-600"></div>
-                                Loading...
-                            </span>
-                        ) : locationGranted ? (
-                            `${nearby.length} ${nearby.length === 1 ? 'person' : 'people'} within ${radius} km`
-                        ) : (
-                            `${allUsers.length} ${allUsers.length === 1 ? 'person' : 'people'} online`
-                        )}
+            <div
+                className={`fixed right-0 bottom-0 z-30 flex max-h-[70vh] w-full flex-col overflow-y-auto bg-white shadow-2xl transition-transform duration-300 ease-in-out md:relative md:right-auto md:bottom-auto md:z-auto md:max-h-screen md:w-80 ${showSidebar ? 'translate-y-0' : 'translate-y-full md:translate-y-0'} rounded-t-2xl md:rounded-none`}
+            >
+                <div className="sticky top-0 z-20 border-b border-gray-200 bg-white px-3 py-2 md:px-4 md:py-3">
+                    <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                            <h2 className="text-base font-semibold text-gray-900 md:text-lg">
+                                {locationGranted ? 'Nearby Users' : 'All Users'}
+                            </h2>
+                            <div className="mt-0.5 text-xs text-gray-500 md:mt-1 md:text-sm">
+                                {fetchingNearby ? (
+                                    <span className="inline-flex items-center gap-1">
+                                        <div className="h-3 w-3 animate-spin rounded-full border-b-2 border-gray-600"></div>
+                                        Loading...
+                                    </span>
+                                ) : locationGranted ? (
+                                    `${nearby.length} ${nearby.length === 1 ? 'person' : 'people'} within ${radius} km`
+                                ) : (
+                                    `${allUsers.length} ${allUsers.length === 1 ? 'person' : 'people'} online`
+                                )}
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setShowSidebar(false)}
+                            className="p-1 text-gray-400 hover:text-gray-600 md:hidden"
+                            aria-label="Close user list"
+                        >
+                            <svg
+                                className="h-6 w-6"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M6 18L18 6M6 6l12 12"
+                                />
+                            </svg>
+                        </button>
                     </div>
                 </div>
                 <div className="flex-1 overflow-y-auto">
@@ -603,6 +741,14 @@ export default function Map() {
                     />
                 </div>
             </div>
+
+            {/* Overlay for mobile sidebar */}
+            {showSidebar && (
+                <div
+                    className="fixed inset-0 z-20 bg-black/50 md:hidden"
+                    onClick={() => setShowSidebar(false)}
+                />
+            )}
         </div>
     );
 }
