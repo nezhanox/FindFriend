@@ -1,4 +1,5 @@
 import ConversationItem from '@/components/Chat/ConversationItem';
+import PageTransition from '@/components/PageTransition';
 import { Conversation } from '@/types/chat';
 import { Head } from '@inertiajs/react';
 import { motion } from 'framer-motion';
@@ -13,7 +14,7 @@ export default function ChatIndex({ conversations }: Props) {
         <>
             <Head title="Chat" />
 
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+            <PageTransition className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
                 <div className="mx-auto max-w-4xl">
                     {/* Header */}
                     <motion.div
@@ -97,7 +98,7 @@ export default function ChatIndex({ conversations }: Props) {
                         )}
                     </div>
                 </div>
-            </div>
+            </PageTransition>
         </>
     );
 }

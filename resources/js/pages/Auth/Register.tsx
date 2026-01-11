@@ -1,3 +1,4 @@
+import PageTransition from '@/components/PageTransition';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Head, Link, router } from '@inertiajs/react';
@@ -42,7 +43,7 @@ export default function Register({ errors }: Props) {
         <>
             <Head title="Register" />
 
-            <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+            <PageTransition className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
                 <div className="w-full max-w-md">
                     {/* Header */}
                     <motion.div
@@ -343,7 +344,7 @@ export default function Register({ errors }: Props) {
                         </div>
                     </motion.div>
                 </div>
-            </div>
+            </PageTransition>
         </>
     );
 }

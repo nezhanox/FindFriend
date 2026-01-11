@@ -2,10 +2,11 @@ import '../css/app.css';
 import './bootstrap';
 
 import { createInertiaApp } from '@inertiajs/react';
+import { configureEcho } from '@laravel/echo-react';
+import { AnimatePresence } from 'framer-motion';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { configureEcho } from '@laravel/echo-react';
 
 configureEcho({
     broadcaster: 'reverb',
@@ -31,7 +32,9 @@ createInertiaApp({
 
         root.render(
             <StrictMode>
-                <App {...props} />
+                <AnimatePresence mode="wait" initial={false}>
+                    <App {...props} />
+                </AnimatePresence>
             </StrictMode>,
         );
     },
@@ -39,4 +42,3 @@ createInertiaApp({
         color: '#4B5563',
     },
 });
-

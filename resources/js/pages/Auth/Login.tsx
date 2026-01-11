@@ -1,9 +1,10 @@
-import { FormEventHandler, useState } from 'react';
+import PageTransition from '@/components/PageTransition';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Head, Link, router } from '@inertiajs/react';
 import { motion } from 'framer-motion';
-import { LogIn, Mail, Lock, AlertCircle } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { AlertCircle, Lock, LogIn, Mail } from 'lucide-react';
+import { FormEventHandler, useState } from 'react';
 
 interface Props {
     status?: string;
@@ -32,13 +33,17 @@ export default function Login({ status, errors }: Props) {
         <>
             <Head title="Login" />
 
-            <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+            <PageTransition className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
                 <div className="w-full max-w-md">
                     {/* Header */}
                     <motion.div
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                        transition={{
+                            type: 'spring',
+                            stiffness: 300,
+                            damping: 30,
+                        }}
                         className="mb-6 overflow-hidden rounded-3xl border border-white/20 bg-white/10 p-6 text-center shadow-2xl backdrop-blur-2xl backdrop-saturate-150"
                     >
                         <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/30">
@@ -67,7 +72,12 @@ export default function Login({ status, errors }: Props) {
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        transition={{ type: 'spring', stiffness: 300, damping: 30, delay: 0.1 }}
+                        transition={{
+                            type: 'spring',
+                            stiffness: 300,
+                            damping: 30,
+                            delay: 0.1,
+                        }}
                         className="overflow-hidden rounded-3xl border border-white/20 bg-white/10 p-8 shadow-2xl backdrop-blur-2xl backdrop-saturate-150"
                     >
                         <form onSubmit={submit} className="space-y-6">
@@ -80,16 +90,19 @@ export default function Login({ status, errors }: Props) {
                                     Email
                                 </label>
                                 <div className="relative">
-                                    <Mail className="absolute left-3 top-1/2 size-5 -translate-y-1/2 text-gray-400" />
+                                    <Mail className="absolute top-1/2 left-3 size-5 -translate-y-1/2 text-gray-400" />
                                     <Input
                                         id="email"
                                         type="email"
                                         name="email"
                                         value={data.email}
                                         onChange={(e) =>
-                                            setData({ ...data, email: e.target.value })
+                                            setData({
+                                                ...data,
+                                                email: e.target.value,
+                                            })
                                         }
-                                        className="pl-11 border-white/20 bg-white/10 backdrop-blur-2xl backdrop-saturate-150 focus:border-blue-500/50 focus:bg-white/20"
+                                        className="border-white/20 bg-white/10 pl-11 backdrop-blur-2xl backdrop-saturate-150 focus:border-blue-500/50 focus:bg-white/20"
                                         required
                                         autoFocus
                                         autoComplete="username"
@@ -117,16 +130,19 @@ export default function Login({ status, errors }: Props) {
                                     Password
                                 </label>
                                 <div className="relative">
-                                    <Lock className="absolute left-3 top-1/2 size-5 -translate-y-1/2 text-gray-400" />
+                                    <Lock className="absolute top-1/2 left-3 size-5 -translate-y-1/2 text-gray-400" />
                                     <Input
                                         id="password"
                                         type="password"
                                         name="password"
                                         value={data.password}
                                         onChange={(e) =>
-                                            setData({ ...data, password: e.target.value })
+                                            setData({
+                                                ...data,
+                                                password: e.target.value,
+                                            })
                                         }
-                                        className="pl-11 border-white/20 bg-white/10 backdrop-blur-2xl backdrop-saturate-150 focus:border-blue-500/50 focus:bg-white/20"
+                                        className="border-white/20 bg-white/10 pl-11 backdrop-blur-2xl backdrop-saturate-150 focus:border-blue-500/50 focus:bg-white/20"
                                         required
                                         autoComplete="current-password"
                                         aria-invalid={!!errors?.password}
@@ -152,7 +168,10 @@ export default function Login({ status, errors }: Props) {
                                         name="remember"
                                         checked={data.remember}
                                         onChange={(e) =>
-                                            setData({ ...data, remember: e.target.checked })
+                                            setData({
+                                                ...data,
+                                                remember: e.target.checked,
+                                            })
                                         }
                                         className="size-4 rounded border-white/20 bg-white/10 text-blue-600 focus:ring-2 focus:ring-blue-500/50"
                                     />
@@ -170,7 +189,10 @@ export default function Login({ status, errors }: Props) {
                             </div>
 
                             {/* Submit Button */}
-                            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                            <motion.div
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                            >
                                 <Button
                                     type="submit"
                                     disabled={processing}
@@ -195,7 +217,7 @@ export default function Login({ status, errors }: Props) {
                         </div>
                     </motion.div>
                 </div>
-            </div>
+            </PageTransition>
         </>
     );
 }
