@@ -17,5 +17,6 @@ Route::middleware('auth')->group(function () {
         Route::post('/conversations', [ConversationController::class, 'store'])->name('conversations.store');
         Route::post('/messages', [MessageController::class, 'store'])->name('messages.store');
         Route::post('/conversations/{conversation}/mark-as-read', [MessageController::class, 'markAsRead'])->name('conversations.mark-as-read');
+        Route::post('/conversations/{conversation}/typing', [ConversationController::class, 'typing'])->name('conversations.typing');
     });
 });

@@ -1,17 +1,20 @@
+import TypingIndicator from '@/components/Chat/TypingIndicator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Conversation } from '@/types/chat';
 import { Link } from '@inertiajs/react';
 import { formatDistanceToNow } from 'date-fns';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 
 interface ConversationItemProps {
     conversation: Conversation;
     isActive?: boolean;
+    isTyping?: boolean;
 }
 
 export default function ConversationItem({
     conversation,
     isActive = false,
+    isTyping = false,
 }: ConversationItemProps) {
     return (
         <Link href={`/chat/${conversation.id}`}>
@@ -58,14 +61,35 @@ export default function ConversationItem({
                             )}
                         </div>
 
-                        {conversation.last_message && (
-                            <p
-                                className={`mt-0.5 truncate text-xs md:mt-1 md:text-sm ${conversation.last_message.is_own ? 'text-gray-600 dark:text-gray-400' : 'font-medium text-gray-900 dark:text-white'} `}
-                            >
-                                {conversation.last_message.is_own && 'You: '}
-                                {conversation.last_message.content}
-                            </p>
-                        )}
+                        <AnimatePresence mode="wait">
+                            {isTyping ? (
+                                <motion.div
+                                    key="typing"
+                                    initial={{ opacity: 0, y: -5 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: 5 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="mt-0.5 md:mt-1"
+                                >
+                                    <TypingIndicator variant="inline" />
+                                </motion.div>
+                            ) : (
+                                conversation.last_message && (
+                                    <motion.p
+                                        key="message"
+                                        initial={{ opacity: 0, y: -5 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 5 }}
+                                        transition={{ duration: 0.2 }}
+                                        className={`mt-0.5 truncate text-xs md:mt-1 md:text-sm ${conversation.last_message.is_own ? 'text-gray-600 dark:text-gray-400' : 'font-medium text-gray-900 dark:text-white'} `}
+                                    >
+                                        {conversation.last_message.is_own &&
+                                            'You: '}
+                                        {conversation.last_message.content}
+                                    </motion.p>
+                                )
+                            )}
+                        </AnimatePresence>
                     </div>
                 </div>
 

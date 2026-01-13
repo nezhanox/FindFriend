@@ -1,17 +1,48 @@
+import axios from '@/bootstrap';
 import { motion } from 'framer-motion';
 import { Send } from 'lucide-react';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 
 interface MessageInputProps {
+    conversationId: number;
     onSend: (content: string) => void;
     disabled?: boolean;
 }
 
 export default function MessageInput({
+    conversationId,
     onSend,
     disabled = false,
 }: MessageInputProps) {
     const [content, setContent] = useState('');
+    const [isTyping, setIsTyping] = useState(false);
+    const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    const sendTypingEvent = (typing: boolean) => {
+        axios
+            .post(`/chat/conversations/${conversationId}/typing`, { typing })
+            .catch((error) => {
+                console.error('Failed to send typing status:', error);
+            });
+    };
+
+    const handleTyping = () => {
+        if (!isTyping) {
+            setIsTyping(true);
+            sendTypingEvent(true);
+        }
+
+        // Clear existing timeout
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+        }
+
+        // Set new timeout to stop typing after 3 seconds of inactivity
+        typingTimeoutRef.current = setTimeout(() => {
+            setIsTyping(false);
+            sendTypingEvent(false);
+        }, 3000);
+    };
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
@@ -20,9 +51,29 @@ export default function MessageInput({
             return;
         }
 
+        // Stop typing indicator
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+        }
+        setIsTyping(false);
+        sendTypingEvent(false);
+
         onSend(content.trim());
         setContent('');
     };
+
+    useEffect(() => {
+        return () => {
+            // Cleanup on unmount
+            if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current);
+            }
+            if (isTyping) {
+                sendTypingEvent(false);
+            }
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     return (
         <form
@@ -38,7 +89,10 @@ export default function MessageInput({
                 >
                     <textarea
                         value={content}
-                        onChange={(e) => setContent(e.target.value)}
+                        onChange={(e) => {
+                            setContent(e.target.value);
+                            handleTyping();
+                        }}
                         onKeyDown={(e) => {
                             if (e.key === 'Enter' && !e.shiftKey) {
                                 e.preventDefault();

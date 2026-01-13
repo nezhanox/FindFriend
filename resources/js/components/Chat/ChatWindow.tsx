@@ -1,11 +1,13 @@
 import axios from '@/bootstrap';
 import { ConversationDetail, Message } from '@/types/chat';
+import { Link } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Map as MapIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import MessageBubble from './MessageBubble';
 import MessageInput from './MessageInput';
+import TypingIndicator from './TypingIndicator';
 
 interface ChatWindowProps {
     conversation: ConversationDetail;
@@ -22,8 +24,10 @@ export default function ChatWindow({
 }: ChatWindowProps) {
     const [messages, setMessages] = useState<Message[]>(initialMessages);
     const [sending, setSending] = useState(false);
+    const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
         messagesEndRef.current?.scrollIntoView({ behavior });
@@ -45,7 +49,13 @@ export default function ChatWindow({
         channel.listen('.MessageSent', (event: Message) => {
             setMessages((prev) => [...prev, event]);
 
+            // Hide typing indicator when message is received
             if (event.sender_id !== currentUserId) {
+                setIsOtherUserTyping(false);
+                if (typingTimeoutRef.current) {
+                    clearTimeout(typingTimeoutRef.current);
+                }
+
                 axios
                     .post(`/chat/conversations/${conversation.id}/mark-as-read`)
                     .catch((error) => {
@@ -64,8 +74,36 @@ export default function ChatWindow({
             );
         });
 
+        channel.listen(
+            '.UserTyping',
+            (event: { user_id: number; typing: boolean }) => {
+                // Only show typing indicator for other user
+                if (event.user_id !== currentUserId) {
+                    if (event.typing) {
+                        setIsOtherUserTyping(true);
+
+                        // Auto-hide after 5 seconds
+                        if (typingTimeoutRef.current) {
+                            clearTimeout(typingTimeoutRef.current);
+                        }
+                        typingTimeoutRef.current = setTimeout(() => {
+                            setIsOtherUserTyping(false);
+                        }, 5000);
+                    } else {
+                        setIsOtherUserTyping(false);
+                        if (typingTimeoutRef.current) {
+                            clearTimeout(typingTimeoutRef.current);
+                        }
+                    }
+                }
+            },
+        );
+
         return () => {
             echo().leave(`conversation.${conversation.id}`);
+            if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current);
+            }
         };
     }, [conversation.id, currentUserId]);
 
@@ -111,7 +149,7 @@ export default function ChatWindow({
                         <ArrowLeft className="size-5 text-gray-900 dark:text-white" />
                     </button>
                 )}
-                <div className="flex items-center gap-2 md:gap-3">
+                <div className="flex flex-1 items-center gap-2 md:gap-3">
                     <div className="size-9 shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-blue-400 to-purple-500 ring-2 ring-white/30 md:size-10 md:ring-0">
                         {conversation.other_user.avatar ? (
                             <img
@@ -127,12 +165,32 @@ export default function ChatWindow({
                             </div>
                         )}
                     </div>
-                    <div>
+                    <div className="flex-1">
                         <h2 className="text-base font-semibold text-gray-900 dark:text-white">
                             {conversation.other_user.name}
                         </h2>
+                        <AnimatePresence>
+                            {isOtherUserTyping && (
+                                <TypingIndicator variant="inline" />
+                            )}
+                        </AnimatePresence>
                     </div>
                 </div>
+
+                {/* Map Button */}
+                <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                >
+                    <Link
+                        href="/"
+                        className="flex items-center gap-1.5 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-lg shadow-blue-500/30 transition-shadow hover:shadow-xl hover:shadow-blue-500/40 md:gap-2 md:px-4 md:py-2 md:text-sm"
+                    >
+                        <MapIcon className="size-3.5 md:size-4" />
+                        <span className="hidden sm:inline">Map</span>
+                    </Link>
+                </motion.div>
             </div>
 
             {/* Messages */}
@@ -154,6 +212,14 @@ export default function ChatWindow({
                         />
                     ))}
                 </AnimatePresence>
+                <AnimatePresence>
+                    {isOtherUserTyping && (
+                        <TypingIndicator
+                            userName={conversation.other_user.name}
+                            variant="bubble"
+                        />
+                    )}
+                </AnimatePresence>
                 <div ref={messagesEndRef} />
             </div>
 
@@ -167,7 +233,11 @@ export default function ChatWindow({
                     paddingBottom: 'max(0rem, env(safe-area-inset-bottom))',
                 }}
             >
-                <MessageInput onSend={handleSendMessage} disabled={sending} />
+                <MessageInput
+                    conversationId={conversation.id}
+                    onSend={handleSendMessage}
+                    disabled={sending}
+                />
             </div>
         </motion.div>
     );

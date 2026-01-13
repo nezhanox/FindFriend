@@ -1,15 +1,91 @@
 import ConversationItem from '@/components/Chat/ConversationItem';
 import PageTransition from '@/components/PageTransition';
 import { Conversation } from '@/types/chat';
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
+import { echo } from '@laravel/echo-react';
 import { motion } from 'framer-motion';
-import { MessageCircle } from 'lucide-react';
+import { Map as MapIcon, MessageCircle } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 interface Props {
     conversations: Conversation[];
+    currentUserId: number;
 }
 
-export default function ChatIndex({ conversations }: Props) {
+export default function ChatIndex({ conversations, currentUserId }: Props) {
+    const [typingUsers, setTypingUsers] = useState<Set<number>>(new Set());
+    const typingTimeoutRefs = useRef<Map<number, NodeJS.Timeout>>(new Map());
+
+    useEffect(() => {
+        // Subscribe to typing events for all conversations
+        conversations.forEach((conversation) => {
+            const channel = echo().private(`conversation.${conversation.id}`);
+
+            channel.listen(
+                '.UserTyping',
+                (event: { user_id: number; typing: boolean }) => {
+                    // Only track typing for other users
+                    if (event.user_id !== currentUserId) {
+                        const userId = conversation.other_user.id;
+
+                        if (event.typing) {
+                            setTypingUsers((prev) => {
+                                const newSet = new Set(prev);
+                                newSet.add(userId);
+                                return newSet;
+                            });
+
+                            // Clear existing timeout
+                            const existingTimeout =
+                                typingTimeoutRefs.current.get(userId);
+                            if (existingTimeout) {
+                                clearTimeout(existingTimeout);
+                            }
+
+                            // Auto-hide after 5 seconds
+                            const timeout = setTimeout(() => {
+                                setTypingUsers((prev) => {
+                                    const newSet = new Set(prev);
+                                    newSet.delete(userId);
+                                    return newSet;
+                                });
+                                typingTimeoutRefs.current.delete(userId);
+                            }, 5000);
+
+                            typingTimeoutRefs.current.set(userId, timeout);
+                        } else {
+                            setTypingUsers((prev) => {
+                                const newSet = new Set(prev);
+                                newSet.delete(userId);
+                                return newSet;
+                            });
+
+                            const existingTimeout =
+                                typingTimeoutRefs.current.get(userId);
+                            if (existingTimeout) {
+                                clearTimeout(existingTimeout);
+                                typingTimeoutRefs.current.delete(userId);
+                            }
+                        }
+                    }
+                },
+            );
+        });
+
+        return () => {
+            // Cleanup
+            conversations.forEach((conversation) => {
+                echo().leave(`conversation.${conversation.id}`);
+            });
+
+            // Clear all timeouts
+            typingTimeoutRefs.current.forEach((timeout) => {
+                clearTimeout(timeout);
+            });
+            typingTimeoutRefs.current.clear();
+        };
+    }, [conversations, currentUserId]);
+
     return (
         <>
             <Head title="Chat" />
@@ -27,19 +103,42 @@ export default function ChatIndex({ conversations }: Props) {
                         }}
                         className="mb-4 overflow-hidden rounded-2xl border border-white/20 bg-white/10 p-4 shadow-2xl backdrop-blur-2xl backdrop-saturate-150 md:mb-6 md:rounded-3xl md:p-6"
                     >
-                        <div className="flex items-center gap-2 md:gap-3">
-                            <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/30 md:size-12 md:rounded-2xl">
-                                <MessageCircle className="size-5 text-white md:size-6" />
+                        <div className="flex items-center justify-between gap-2 md:gap-3">
+                            <div className="flex items-center gap-2 md:gap-3">
+                                <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/30 md:size-12 md:rounded-2xl">
+                                    <MessageCircle className="size-5 text-white md:size-6" />
+                                </div>
+                                <div>
+                                    <h1 className="text-xl font-bold text-gray-900 md:text-2xl dark:text-white">
+                                        Messages
+                                    </h1>
+                                    <p className="text-xs text-gray-600 md:text-sm dark:text-gray-400">
+                                        {conversations.length} conversation
+                                        {conversations.length !== 1 ? 's' : ''}
+                                    </p>
+                                </div>
                             </div>
-                            <div>
-                                <h1 className="text-xl font-bold text-gray-900 md:text-2xl dark:text-white">
-                                    Messages
-                                </h1>
-                                <p className="text-xs text-gray-600 md:text-sm dark:text-gray-400">
-                                    {conversations.length} conversation
-                                    {conversations.length !== 1 ? 's' : ''}
-                                </p>
-                            </div>
+
+                            {/* Map Button */}
+                            <motion.div
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                transition={{
+                                    type: 'spring',
+                                    stiffness: 400,
+                                    damping: 25,
+                                }}
+                            >
+                                <Link
+                                    href="/"
+                                    className="flex items-center gap-1.5 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-lg shadow-blue-500/30 transition-shadow hover:shadow-xl hover:shadow-blue-500/40 md:gap-2 md:px-4 md:py-2 md:text-sm"
+                                >
+                                    <MapIcon className="size-3.5 md:size-4" />
+                                    <span className="hidden sm:inline">
+                                        Map
+                                    </span>
+                                </Link>
+                            </motion.div>
                         </div>
                     </motion.div>
 
@@ -91,6 +190,9 @@ export default function ChatIndex({ conversations }: Props) {
                                     >
                                         <ConversationItem
                                             conversation={conversation}
+                                            isTyping={typingUsers.has(
+                                                conversation.other_user.id,
+                                            )}
                                         />
                                     </motion.div>
                                 ))}

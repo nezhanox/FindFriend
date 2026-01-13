@@ -6,9 +6,11 @@ namespace App\Http\Controllers;
 
 use App\Actions\Chat\CreateConversationAction;
 use App\Actions\Chat\MarkMessagesAsReadAction;
+use App\Events\UserTyping;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -50,6 +52,7 @@ class ConversationController extends Controller
 
         return Inertia::render('Chat/Index', [
             'conversations' => $conversations,
+            'currentUserId' => $user->getKey(),
         ]);
     }
 
@@ -106,7 +109,7 @@ class ConversationController extends Controller
     /**
      * Create a new conversation with a user.
      */
-    public function store(Request $request, CreateConversationAction $createConversation): \Illuminate\Http\JsonResponse
+    public function store(Request $request, CreateConversationAction $createConversation): JsonResponse
     {
         $request->validate([
             'recipient_id' => ['required', 'integer', 'exists:users,id'],
@@ -121,5 +124,33 @@ class ConversationController extends Controller
         return response()->json([
             'id' => $conversation->getKey(),
         ], 201);
+    }
+
+    /**
+     * Broadcast typing status in a conversation.
+     */
+    public function typing(Request $request, Conversation $conversation): JsonResponse
+    {
+        $request->validate([
+            'typing' => ['required', 'boolean'],
+        ]);
+
+        /** @var User $user */
+        $user = $request->user();
+
+        // Authorize: user must be part of the conversation
+        abort_unless(
+            $conversation->user_id === $user->getKey() || $conversation->recipient_id === $user->getKey(),
+            403,
+            'Unauthorized access to conversation'
+        );
+
+        broadcast(new UserTyping(
+            $conversation->getKey(),
+            $user->getKey(),
+            $request->boolean('typing')
+        ));
+
+        return response()->json(['status' => 'success']);
     }
 }
