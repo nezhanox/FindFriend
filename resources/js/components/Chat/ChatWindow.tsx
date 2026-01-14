@@ -47,7 +47,14 @@ export default function ChatWindow({
         const channel = echo().private(`conversation.${conversation.id}`);
 
         channel.listen('.MessageSent', (event: Message) => {
-            setMessages((prev) => [...prev, event]);
+            // Check if message already exists to prevent duplicates
+            setMessages((prev) => {
+                const messageExists = prev.some((msg) => msg.id === event.id);
+                if (messageExists) {
+                    return prev;
+                }
+                return [...prev, event];
+            });
 
             // Hide typing indicator when message is received
             if (event.sender_id !== currentUserId) {

@@ -26,3 +26,8 @@ Broadcast::channel('conversation.{conversationId}', function (User $user, int $c
     return $conversation->user_id === $user->getKey()
         || $conversation->recipient_id === $user->getKey();
 });
+
+// Private channel for user notifications
+Broadcast::channel('user.{userId}', function (User $user, int $userId): bool {
+    return $user->getKey() === $userId;
+});

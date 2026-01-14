@@ -1,5 +1,6 @@
 import ChatWindow from '@/components/Chat/ChatWindow';
 import PageTransition from '@/components/PageTransition';
+import AppLayout from '@/Layouts/AppLayout';
 import { ConversationDetail, Message } from '@/types/chat';
 import { Head, usePage } from '@inertiajs/react';
 
@@ -22,7 +23,7 @@ export default function ChatShow({ conversation, messages }: Props) {
     const { auth } = usePage<PageProps>().props;
 
     return (
-        <>
+        <AppLayout>
             <Head title={`Chat with ${conversation.other_user.name}`} />
 
             <PageTransition className="fixed inset-0 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 md:p-4 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
@@ -38,6 +39,6 @@ export default function ChatShow({ conversation, messages }: Props) {
                     />
                 </div>
             </PageTransition>
-        </>
+        </AppLayout>
     );
 }

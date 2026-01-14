@@ -23,7 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Use custom CSRF middleware
         $middleware->validateCsrfTokens(except: [
-            'chat/*',
+            //            'chat/*',
         ]);
 
         $middleware->web(append: [

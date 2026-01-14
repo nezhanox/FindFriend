@@ -27,6 +27,7 @@ use Illuminate\Notifications\Notifiable;
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Conversation> $initiatedConversations
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Conversation> $receivedConversations
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Message> $messages
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Notification> $notifications
  *
  * @method static \Illuminate\Database\Eloquent\Builder|User newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|User newQuery()
@@ -128,5 +129,15 @@ class User extends Authenticatable implements MustVerifyEmail
     public function messages(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(Message::class, 'sender_id');
+    }
+
+    /**
+     * Get all notifications for this user.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<Notification, covariant User>
+     */
+    public function notifications(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Notification::class);
     }
 }

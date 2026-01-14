@@ -15,6 +15,6 @@ class VerifyCsrfToken extends Middleware
      */
     protected $except = [
         // Temporarily disable CSRF for debugging
-        'chat/*',
+        //        'chat/*',
     ];
 }

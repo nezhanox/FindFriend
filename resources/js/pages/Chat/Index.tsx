@@ -1,5 +1,6 @@
 import ConversationItem from '@/components/Chat/ConversationItem';
 import PageTransition from '@/components/PageTransition';
+import AppLayout from '@/Layouts/AppLayout';
 import { Conversation } from '@/types/chat';
 import { Head, Link } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
@@ -17,6 +18,9 @@ export default function ChatIndex({ conversations, currentUserId }: Props) {
     const typingTimeoutRefs = useRef<Map<number, NodeJS.Timeout>>(new Map());
 
     useEffect(() => {
+        // Copy ref to a local variable for cleanup
+        const timeoutsMap = typingTimeoutRefs.current;
+
         // Subscribe to typing events for all conversations
         conversations.forEach((conversation) => {
             const channel = echo().private(`conversation.${conversation.id}`);
@@ -36,8 +40,7 @@ export default function ChatIndex({ conversations, currentUserId }: Props) {
                             });
 
                             // Clear existing timeout
-                            const existingTimeout =
-                                typingTimeoutRefs.current.get(userId);
+                            const existingTimeout = timeoutsMap.get(userId);
                             if (existingTimeout) {
                                 clearTimeout(existingTimeout);
                             }
@@ -49,10 +52,10 @@ export default function ChatIndex({ conversations, currentUserId }: Props) {
                                     newSet.delete(userId);
                                     return newSet;
                                 });
-                                typingTimeoutRefs.current.delete(userId);
+                                timeoutsMap.delete(userId);
                             }, 5000);
 
-                            typingTimeoutRefs.current.set(userId, timeout);
+                            timeoutsMap.set(userId, timeout);
                         } else {
                             setTypingUsers((prev) => {
                                 const newSet = new Set(prev);
@@ -60,11 +63,10 @@ export default function ChatIndex({ conversations, currentUserId }: Props) {
                                 return newSet;
                             });
 
-                            const existingTimeout =
-                                typingTimeoutRefs.current.get(userId);
+                            const existingTimeout = timeoutsMap.get(userId);
                             if (existingTimeout) {
                                 clearTimeout(existingTimeout);
-                                typingTimeoutRefs.current.delete(userId);
+                                timeoutsMap.delete(userId);
                             }
                         }
                     }
@@ -78,16 +80,16 @@ export default function ChatIndex({ conversations, currentUserId }: Props) {
                 echo().leave(`conversation.${conversation.id}`);
             });
 
-            // Clear all timeouts
-            typingTimeoutRefs.current.forEach((timeout) => {
+            // Clear all timeouts using the local variable
+            timeoutsMap.forEach((timeout) => {
                 clearTimeout(timeout);
             });
-            typingTimeoutRefs.current.clear();
+            timeoutsMap.clear();
         };
     }, [conversations, currentUserId]);
 
     return (
-        <>
+        <AppLayout>
             <Head title="Chat" />
 
             <PageTransition className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
@@ -201,6 +203,6 @@ export default function ChatIndex({ conversations, currentUserId }: Props) {
                     </div>
                 </div>
             </PageTransition>
-        </>
+        </AppLayout>
     );
 }
