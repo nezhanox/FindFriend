@@ -24,6 +24,35 @@ function getMinutesSinceLastSeen(
     return Math.floor((now.getTime() - lastSeen.getTime()) / 1000 / 60);
 }
 
+// Create a circle polygon from center point and radius in kilometers
+function createCircleGeoJSON(
+    lng: number,
+    lat: number,
+    radiusInKm: number,
+): GeoJSON.Feature<GeoJSON.Polygon> {
+    const points = 64;
+    const coords: [number, number][] = [];
+    const distanceX = radiusInKm / (111.32 * Math.cos((lat * Math.PI) / 180));
+    const distanceY = radiusInKm / 110.574;
+
+    for (let i = 0; i < points; i++) {
+        const theta = (i / points) * (2 * Math.PI);
+        const x = distanceX * Math.cos(theta);
+        const y = distanceY * Math.sin(theta);
+        coords.push([lng + x, lat + y]);
+    }
+    coords.push(coords[0]); // Close the polygon
+
+    return {
+        type: 'Feature',
+        properties: {},
+        geometry: {
+            type: 'Polygon',
+            coordinates: [coords],
+        },
+    };
+}
+
 interface PageProps {
     auth?: {
         user?: {
@@ -318,6 +347,40 @@ export default function Map() {
         // Add navigation controls
         map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
+        // Add radius circle source and layer when map loads
+        map.current.on('load', () => {
+            if (!map.current) return;
+
+            // Add source for radius circle
+            map.current.addSource('radius-circle', {
+                type: 'geojson',
+                data: createCircleGeoJSON(lng, lat, radius),
+            });
+
+            // Add fill layer for the circle
+            map.current.addLayer({
+                id: 'radius-circle-fill',
+                type: 'fill',
+                source: 'radius-circle',
+                paint: {
+                    'fill-color': '#3b82f6',
+                    'fill-opacity': 0.1,
+                },
+            });
+
+            // Add outline layer for the circle
+            map.current.addLayer({
+                id: 'radius-circle-outline',
+                type: 'line',
+                source: 'radius-circle',
+                paint: {
+                    'line-color': '#3b82f6',
+                    'line-width': 2,
+                    'line-opacity': 0.6,
+                },
+            });
+        });
+
         // Don't auto-request location - wait for user gesture
         setLoading(false);
 
@@ -508,6 +571,19 @@ export default function Map() {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [radius, lat, lng, loading]);
+
+    // Update radius circle when position or radius changes
+    useEffect(() => {
+        if (!map.current || !locationGranted) return;
+
+        const source = map.current.getSource('radius-circle') as
+            | mapboxgl.GeoJSONSource
+            | undefined;
+
+        if (source) {
+            source.setData(createCircleGeoJSON(lng, lat, radius));
+        }
+    }, [lat, lng, radius, locationGranted]);
 
     // Listen for real-time location updates
     useEffect(() => {
