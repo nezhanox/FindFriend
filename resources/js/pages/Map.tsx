@@ -11,9 +11,18 @@ import { echo } from '@laravel/echo-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
+
+function getMinutesSinceLastSeen(
+    lastSeenAt: string | null | undefined,
+): number {
+    if (!lastSeenAt) return Infinity;
+    const lastSeen = new Date(lastSeenAt);
+    const now = new Date();
+    return Math.floor((now.getTime() - lastSeen.getTime()) / 1000 / 60);
+}
 
 interface PageProps {
     auth?: {
@@ -49,6 +58,14 @@ export default function Map() {
     const [locationRequested, setLocationRequested] = useState<boolean>(false);
     const [locationGranted, setLocationGranted] = useState<boolean>(false);
     const [showSidebar, setShowSidebar] = useState<boolean>(false);
+
+    // Filter users for map display - only show users online within the last hour
+    const onlineUsers = useMemo(() => {
+        return allUsers.filter((user) => {
+            const minutes = getMinutesSinceLastSeen(user.last_seen_at);
+            return minutes < 60;
+        });
+    }, [allUsers]);
 
     // Request user location
     const requestLocation = useCallback(() => {
@@ -307,14 +324,14 @@ export default function Map() {
 
     // Render all users on map initialization
     useEffect(() => {
-        if (!map.current || !allUsers || allUsers.length === 0) return;
+        if (!map.current || !onlineUsers || onlineUsers.length === 0) return;
 
         // Clear existing markers first
         nearbyMarkers.current.forEach((marker) => marker.remove());
         nearbyMarkers.current.clear();
 
-        // Create markers for all users
-        allUsers.forEach((user) => {
+        // Create markers for online users only (< 60 minutes)
+        onlineUsers.forEach((user) => {
             const isCurrentUser = user.id === currentUserId;
 
             // Create marker element with different styling for current user
@@ -391,7 +408,7 @@ export default function Map() {
                 });
             }
         });
-    }, [allUsers, currentUserId, handleStartChat]);
+    }, [onlineUsers, currentUserId, handleStartChat]);
 
     // Update nearby users markers when nearby state changes
     useEffect(() => {
@@ -775,7 +792,7 @@ export default function Map() {
                                     ) : locationGranted ? (
                                         `${nearby.length} ${nearby.length === 1 ? 'person' : 'people'} within ${radius} km`
                                     ) : (
-                                        `${allUsers.length} ${allUsers.length === 1 ? 'person' : 'people'} online`
+                                        `${allUsers.length} ${allUsers.length === 1 ? 'user' : 'users'} nearby`
                                     )}
                                 </div>
                             </div>

@@ -1,6 +1,7 @@
 import { UserMarker } from '@/types/location';
 import { router } from '@inertiajs/react';
 import { MessageCircle } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 interface UserListProps {
     users: UserMarker[];
@@ -9,12 +10,50 @@ interface UserListProps {
     isAuthenticated?: boolean;
 }
 
+function getMinutesSinceLastSeen(
+    lastSeenAt: string | null | undefined,
+): number {
+    if (!lastSeenAt) return Infinity;
+    const lastSeen = new Date(lastSeenAt);
+    const now = new Date();
+    return Math.floor((now.getTime() - lastSeen.getTime()) / 1000 / 60);
+}
+
+function formatLastSeen(minutes: number): string {
+    if (minutes < 1) return 'щойно';
+    if (minutes < 60) return `${minutes} хв тому`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} год тому`;
+    const days = Math.floor(hours / 24);
+    return `${days} дн тому`;
+}
+
 export default function UserList({
     users,
     isLoading,
     onUserClick,
     isAuthenticated = false,
 }: UserListProps) {
+    const [activeTab, setActiveTab] = useState<'online' | 'offline'>('online');
+
+    const { onlineUsers, offlineUsers } = useMemo(() => {
+        const online: UserMarker[] = [];
+        const offline: UserMarker[] = [];
+
+        users.forEach((user) => {
+            const minutes = getMinutesSinceLastSeen(user.last_seen_at);
+            if (minutes < 60) {
+                online.push(user);
+            } else {
+                offline.push(user);
+            }
+        });
+
+        return { onlineUsers: online, offlineUsers: offline };
+    }, [users]);
+
+    const displayedUsers = activeTab === 'online' ? onlineUsers : offlineUsers;
+
     const handleStartChat = async (e: React.MouseEvent, userId: number) => {
         e.stopPropagation();
 
@@ -80,81 +119,161 @@ export default function UserList({
     }
 
     return (
-        <div className="divide-y divide-gray-200">
-            {users.map((user) => (
+        <div>
+            {/* Tabs */}
+            <div className="flex border-b border-gray-200">
                 <button
-                    key={user.id}
-                    onClick={() => onUserClick(user)}
-                    className="w-full p-3 text-left transition-colors duration-150 hover:bg-gray-50 focus:bg-gray-100 focus:outline-none md:p-4"
+                    onClick={() => setActiveTab('online')}
+                    className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors ${
+                        activeTab === 'online'
+                            ? 'border-b-2 border-blue-500 text-blue-600'
+                            : 'text-gray-500 hover:text-gray-700'
+                    }`}
                 >
-                    <div className="flex items-start gap-2 md:gap-3">
-                        {/* Avatar */}
-                        <div className="flex-shrink-0">
-                            {user.avatar ? (
-                                <img
-                                    src={user.avatar}
-                                    alt={user.name}
-                                    className="h-10 w-10 rounded-full object-cover md:h-12 md:w-12"
-                                />
-                            ) : (
-                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-purple-500 text-base font-semibold text-white md:h-12 md:w-12 md:text-lg">
-                                    {user.name.charAt(0).toUpperCase()}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* User Info */}
-                        <div className="min-w-0 flex-1">
-                            <div className="flex items-baseline justify-between">
-                                <h3 className="truncate text-sm font-semibold text-gray-900 md:text-base">
-                                    {user.name}
-                                </h3>
-                                <span className="ml-2 flex-shrink-0 text-[10px] font-medium text-blue-600 md:text-xs">
-                                    {user.distance} km
-                                </span>
-                            </div>
-
-                            <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-gray-500 md:mt-1 md:gap-2 md:text-xs">
-                                {user.age && (
-                                    <span className="inline-flex items-center">
-                                        <svg
-                                            className="mr-0.5 h-2.5 w-2.5 md:mr-1 md:h-3 md:w-3"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                        >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth={2}
-                                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                            />
-                                        </svg>
-                                        {user.age} years
-                                    </span>
-                                )}
-                                {user.gender && (
-                                    <>
-                                        {user.age && <span>•</span>}
-                                        <span className="capitalize">
-                                            {user.gender}
-                                        </span>
-                                    </>
-                                )}
-                            </div>
-
-                            {/* Chat Button */}
-                            <button
-                                onClick={(e) => handleStartChat(e, user.id)}
-                                className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 px-2.5 py-1 text-[10px] font-medium text-white shadow-sm transition-all hover:scale-105 hover:shadow-md md:mt-2 md:gap-1.5 md:px-3 md:py-1.5 md:text-xs"
-                            >
-                                <MessageCircle className="size-3 md:size-3.5" />
-                                Chat
-                            </button>
-                        </div>
-                    </div>
+                    Онлайн
+                    {onlineUsers.length > 0 && (
+                        <span className="ml-1.5 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-600">
+                            {onlineUsers.length}
+                        </span>
+                    )}
                 </button>
-            ))}
+                <button
+                    onClick={() => setActiveTab('offline')}
+                    className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors ${
+                        activeTab === 'offline'
+                            ? 'border-b-2 border-blue-500 text-blue-600'
+                            : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                >
+                    Давно в мережі
+                    {offlineUsers.length > 0 && (
+                        <span className="ml-1.5 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                            {offlineUsers.length}
+                        </span>
+                    )}
+                </button>
+            </div>
+
+            {/* User List */}
+            {displayedUsers.length === 0 ? (
+                <div className="py-8 text-center text-gray-500">
+                    <p className="text-sm md:text-base">
+                        {activeTab === 'online'
+                            ? 'Немає користувачів онлайн'
+                            : 'Немає користувачів офлайн'}
+                    </p>
+                </div>
+            ) : (
+                <div className="divide-y divide-gray-200">
+                    {displayedUsers.map((user) => {
+                        const minutesSinceLastSeen = getMinutesSinceLastSeen(
+                            user.last_seen_at,
+                        );
+                        return (
+                            <button
+                                key={user.id}
+                                onClick={() => onUserClick(user)}
+                                className="w-full p-3 text-left transition-colors duration-150 hover:bg-gray-50 focus:bg-gray-100 focus:outline-none md:p-4"
+                            >
+                                <div className="flex items-start gap-2 md:gap-3">
+                                    {/* Avatar */}
+                                    <div className="relative flex-shrink-0">
+                                        {user.avatar ? (
+                                            <img
+                                                src={user.avatar}
+                                                alt={user.name}
+                                                className="h-10 w-10 rounded-full object-cover md:h-12 md:w-12"
+                                            />
+                                        ) : (
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-purple-500 text-base font-semibold text-white md:h-12 md:w-12 md:text-lg">
+                                                {user.name
+                                                    .charAt(0)
+                                                    .toUpperCase()}
+                                            </div>
+                                        )}
+                                        {/* Online indicator */}
+                                        {minutesSinceLastSeen < 60 && (
+                                            <div className="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-500 md:h-3.5 md:w-3.5"></div>
+                                        )}
+                                    </div>
+
+                                    {/* User Info */}
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-baseline justify-between">
+                                            <h3 className="truncate text-sm font-semibold text-gray-900 md:text-base">
+                                                {user.name}
+                                            </h3>
+                                            <span className="ml-2 flex-shrink-0 text-[10px] font-medium text-blue-600 md:text-xs">
+                                                {user.distance} km
+                                            </span>
+                                        </div>
+
+                                        <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-gray-500 md:mt-1 md:gap-2 md:text-xs">
+                                            {user.age && (
+                                                <span className="inline-flex items-center">
+                                                    <svg
+                                                        className="mr-0.5 h-2.5 w-2.5 md:mr-1 md:h-3 md:w-3"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke="currentColor"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                                        />
+                                                    </svg>
+                                                    {user.age} years
+                                                </span>
+                                            )}
+                                            {user.gender && (
+                                                <>
+                                                    {user.age && <span>•</span>}
+                                                    <span className="capitalize">
+                                                        {user.gender}
+                                                    </span>
+                                                </>
+                                            )}
+                                            {user.last_seen_at && (
+                                                <>
+                                                    {(user.age ||
+                                                        user.gender) && (
+                                                        <span>•</span>
+                                                    )}
+                                                    <span
+                                                        className={
+                                                            minutesSinceLastSeen <
+                                                            60
+                                                                ? 'text-green-600'
+                                                                : 'text-gray-400'
+                                                        }
+                                                    >
+                                                        {formatLastSeen(
+                                                            minutesSinceLastSeen,
+                                                        )}
+                                                    </span>
+                                                </>
+                                            )}
+                                        </div>
+
+                                        {/* Chat Button */}
+                                        <button
+                                            onClick={(e) =>
+                                                handleStartChat(e, user.id)
+                                            }
+                                            className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 px-2.5 py-1 text-[10px] font-medium text-white shadow-sm transition-all hover:scale-105 hover:shadow-md md:mt-2 md:gap-1.5 md:px-3 md:py-1.5 md:text-xs"
+                                        >
+                                            <MessageCircle className="size-3 md:size-3.5" />
+                                            Chat
+                                        </button>
+                                    </div>
+                                </div>
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
         </div>
     );
 }

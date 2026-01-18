@@ -7,6 +7,7 @@ export interface UserMarker {
     avatar?: string | null;
     age?: number | null;
     gender?: string | null;
+    last_seen_at?: string | null;
 }
 
 export interface MapFilters {

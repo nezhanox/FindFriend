@@ -23,6 +23,7 @@ use Illuminate\Notifications\Notifiable;
  * @property string|null $remember_token
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $last_seen_at
  * @property-read UserLocation|null $location
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Conversation> $initiatedConversations
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Conversation> $receivedConversations
@@ -52,6 +53,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'avatar',
         'age',
         'gender',
+        'last_seen_at',
     ];
 
     /**
@@ -74,6 +76,7 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'last_seen_at' => 'datetime',
         ];
     }
 

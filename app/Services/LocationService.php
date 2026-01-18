@@ -38,7 +38,11 @@ class LocationService
                 'password' => bcrypt(str()->random(32)),
                 'age' => null,
                 'gender' => null,
+                'last_seen_at' => now(),
             ]);
+        } else {
+            // Update last_seen_at for existing user
+            $user->update(['last_seen_at' => now()]);
         }
 
         // Update or create location in database
@@ -73,7 +77,7 @@ class LocationService
     /**
      * Find nearby users within given radius (in kilometers).
      *
-     * @return array<int, array{id: int, name: string, age: int|null, gender: string|null, avatar: string|null, distance: float, lat: float, lng: float}>
+     * @return array<int, array{id: int, name: string, age: int|null, gender: string|null, avatar: string|null, distance: float, lat: float, lng: float, last_seen_at: string|null}>
      */
     public function findNearby(float $lat, float $lng, int $radius = 5): array
     {
@@ -81,6 +85,7 @@ class LocationService
 
         return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($lat, $lng, $radius): array {
             // Get nearby user IDs from Redis using GEORADIUS
+            // Note: PHPRedis requires options as indexed array ['WITHDIST', 'WITHCOORD'], not associative
             /** @var array<int, array{0: string, 1: string, 2: array{0: string, 1: string}}> $nearbyUserIds */
             $nearbyUserIds = Redis::georadius(
                 self::REDIS_GEO_KEY,
@@ -88,7 +93,7 @@ class LocationService
                 $lat,
                 $radius,
                 'km',
-                ['WITHDIST' => true, 'WITHCOORD' => true]
+                ['WITHDIST', 'WITHCOORD'] // @phpstan-ignore-line argument.type - PHPStan stub is incorrect
             );
 
             if (empty($nearbyUserIds)) {
@@ -108,6 +113,7 @@ class LocationService
             // Build result array with distance information
             $results = [];
             foreach ($nearbyUserIds as $item) {
+                // item = [userId, distance, [lng, lat]]
                 $userId = (int) $item[0];
                 $distance = (float) $item[1];
                 $coords = $item[2];
@@ -128,6 +134,7 @@ class LocationService
                     'distance' => round($distance, 2),
                     'lat' => $location->lat ?? (float) $coords[1],
                     'lng' => $location->lng ?? (float) $coords[0],
+                    'last_seen_at' => $user->last_seen_at?->toISOString(),
                 ];
             }
 

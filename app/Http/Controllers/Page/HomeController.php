@@ -18,7 +18,7 @@ class HomeController extends Controller
         $allUsers = UserLocation::query()
             ->where('is_visible', true)
             ->whereNotNull('user_id')
-            ->with('user:id,name,avatar,age,gender')
+            ->with('user:id,name,avatar,age,gender,last_seen_at')
             ->get()
             ->map(fn ($location) => [
                 'id' => $location->user?->getKey(),
@@ -28,12 +28,14 @@ class HomeController extends Controller
                 'gender' => $location->user?->gender,
                 'lat' => $location->lat,
                 'lng' => $location->lng,
+                'last_seen_at' => $location->user?->last_seen_at?->toISOString(),
             ])
             ->filter(fn ($user) => $user['id'] !== null)
             ->values();
 
         $sessionId = $request->session()->getId();
         $currentUserId = null;
+
         if (auth()->check()) {
             $currentUserId = auth()->id();
         } else {
