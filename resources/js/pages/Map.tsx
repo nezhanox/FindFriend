@@ -1,4 +1,5 @@
 import AppLayout from '@/Layouts/AppLayout';
+import LocationSearch from '@/components/LocationSearch';
 import PageTransition from '@/components/PageTransition';
 import UserList from '@/components/UserList';
 import {
@@ -332,6 +333,95 @@ export default function Map() {
         }
     }, []);
 
+    // Handle location selection from search
+    const handleLocationSelect = useCallback(
+        async (selectedLat: number, selectedLng: number) => {
+            if (!isAuthenticated) {
+                router.visit('/login');
+                return;
+            }
+
+            setLat(selectedLat);
+            setLng(selectedLng);
+            setLocationGranted(true);
+
+            // Update marker position
+            if (userMarker.current) {
+                userMarker.current.setLngLat([selectedLng, selectedLat]);
+            } else if (map.current) {
+                const el = document.createElement('div');
+                el.className = 'user-marker';
+                el.style.backgroundColor = '#3b82f6';
+                el.style.width = '20px';
+                el.style.height = '20px';
+                el.style.borderRadius = '50%';
+                el.style.border = '3px solid white';
+                el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+
+                userMarker.current = new mapboxgl.Marker(el)
+                    .setLngLat([selectedLng, selectedLat])
+                    .addTo(map.current);
+            }
+
+            // Fly to selected location
+            if (map.current) {
+                map.current.flyTo({
+                    center: [selectedLng, selectedLat],
+                    zoom: 14,
+                    essential: true,
+                    duration: 2000,
+                });
+            }
+
+            // Update location on server
+            try {
+                const response = await fetch('/api/location/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                    },
+                    body: JSON.stringify({
+                        lat: selectedLat,
+                        lng: selectedLng,
+                    }),
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        setError('Please log in to share your location');
+                        router.visit('/login');
+                        return;
+                    }
+                    throw new Error('Failed to update location');
+                }
+
+                const data: LocationUpdate = await response.json();
+                console.log('Location updated:', data);
+
+                // Fetch nearby users
+                const nearbyResponse = await fetch(
+                    `/api/location/nearby?lat=${selectedLat}&lng=${selectedLng}&radius=${radius}`,
+                );
+
+                if (nearbyResponse.ok) {
+                    const nearbyData: NearbyUsersResponse =
+                        await nearbyResponse.json();
+                    setNearby(nearbyData.users);
+                }
+            } catch (err) {
+                console.error('Error updating location:', err);
+                setError('Failed to update location on server');
+            }
+        },
+        [isAuthenticated, radius],
+    );
+
+    // Handle current location button click
+    const handleCurrentLocation = useCallback(() => {
+        requestLocation();
+    }, [requestLocation]);
+
     useEffect(() => {
         if (!mapContainer.current) return;
         if (map.current) return; // Initialize map only once
@@ -623,6 +713,18 @@ export default function Map() {
             <PageTransition className="relative flex h-screen w-full flex-col md:flex-row">
                 {/* Map Container */}
                 <div ref={mapContainer} className="flex-1" />
+
+                {/* Location Search - Top Center */}
+                {locationGranted && (
+                    <div className="absolute top-4 left-1/2 z-20 w-[calc(100%-2rem)] -translate-x-1/2 md:w-auto md:min-w-[600px]">
+                        <LocationSearch
+                            lat={lat}
+                            lng={lng}
+                            onLocationSelect={handleLocationSelect}
+                            onCurrentLocation={handleCurrentLocation}
+                        />
+                    </div>
+                )}
 
                 <AnimatePresence>
                     {!locationGranted && !loading && !error && (
