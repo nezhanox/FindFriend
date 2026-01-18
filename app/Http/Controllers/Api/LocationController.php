@@ -21,23 +21,27 @@ class LocationController extends Controller
      * POST /api/location/update
      * Body: { "lat": 50.4501, "lng": 30.5234 }
      * Response: { "user_id": 123, "message": "Location updated successfully" }
+     *
+     * Requires authentication.
      */
     public function update(Request $request): JsonResponse
     {
+        if (! auth()->check()) {
+            return response()->json([
+                'error' => 'Unauthorized',
+                'message' => 'You must be logged in to update location',
+            ], 401);
+        }
+
         $validated = $request->validate([
             'lat' => ['required', 'numeric', 'min:-90', 'max:90'],
             'lng' => ['required', 'numeric', 'min:-180', 'max:180'],
         ]);
 
         try {
-            $sessionId = $request->hasSession() && $request->session()->isStarted()
-                ? $request->session()->getId()
-                : null;
-
             $userId = $this->locationService->updateLocation(
                 lat: (float) $validated['lat'],
-                lng: (float) $validated['lng'],
-                sessionId: $sessionId
+                lng: (float) $validated['lng']
             );
 
             return response()->json([

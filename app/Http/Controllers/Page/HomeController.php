@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Page;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Models\UserLocation;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -33,24 +32,11 @@ class HomeController extends Controller
             ->filter(fn ($user) => $user['id'] !== null)
             ->values();
 
-        $sessionId = $request->session()->getId();
-        $currentUserId = null;
-
-        if (auth()->check()) {
-            $currentUserId = auth()->id();
-        } else {
-            $tempUser = User::query()
-                ->where('email', 'temp_'.$sessionId.'@temp.local')
-                ->first();
-            if ($tempUser) {
-                $currentUserId = $tempUser->getKey();
-            }
-        }
+        $currentUserId = auth()->id();
 
         return Inertia::render('Map', [
             'allUsers' => $allUsers,
             'currentUserId' => $currentUserId,
-            'sessionId' => $sessionId,
         ]);
     }
 }

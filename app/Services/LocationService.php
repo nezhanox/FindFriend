@@ -20,34 +20,21 @@ class LocationService
 
     /**
      * Update user location in Redis and database.
-     * Creates anonymous location, returns temp user ID.
+     * Requires authenticated user.
+     *
+     * @throws \RuntimeException if user is not authenticated
      */
-    public function updateLocation(float $lat, float $lng, ?string $sessionId = null): int
+    public function updateLocation(float $lat, float $lng): int
     {
-        $sessionId = $sessionId ?? (session()->isStarted() ? session()->getId() : str()->random(32));
+        $userId = auth()->id();
 
-        // Find or create temporary user
-        $user = User::query()
-            ->where('email', self::TEMP_USER_PREFIX.$sessionId.'@temp.local')
-            ->first();
-
-        if (! $user) {
-            $user = User::query()->create([
-                'name' => 'Anonymous User',
-                'email' => self::TEMP_USER_PREFIX.$sessionId.'@temp.local',
-                'password' => bcrypt(str()->random(32)),
-                'age' => null,
-                'gender' => null,
-                'last_seen_at' => now(),
-            ]);
-        } else {
-            // Update last_seen_at for existing user
-            $user->update(['last_seen_at' => now()]);
+        if (! $userId) {
+            throw new \RuntimeException('User must be authenticated to update location');
         }
 
         // Update or create location in database
         UserLocation::query()->updateOrCreate(
-            ['user_id' => $user->getKey()],
+            ['user_id' => $userId],
             [
                 'lat' => $lat,
                 'lng' => $lng,
@@ -61,17 +48,17 @@ class LocationService
             self::REDIS_GEO_KEY,
             $lng,
             $lat,
-            (string) $user->getKey()
+            (string) $userId
         );
 
         // Broadcast location update
         broadcast(new LocationUpdated(
-            userId: (int) $user->getKey(),
+            userId: (int) $userId,
             lat: $lat,
             lng: $lng
         ));
 
-        return (int) $user->getKey();
+        return (int) $userId;
     }
 
     /**

@@ -69,6 +69,12 @@ export default function Map() {
 
     // Request user location
     const requestLocation = useCallback(() => {
+        // Check if user is authenticated
+        if (!isAuthenticated) {
+            router.visit('/login');
+            return;
+        }
+
         setLoading(true);
         setError(null);
         setLocationRequested(true);
@@ -135,6 +141,13 @@ export default function Map() {
                         });
 
                         if (!response.ok) {
+                            if (response.status === 401) {
+                                setError(
+                                    'Please log in to share your location',
+                                );
+                                router.visit('/login');
+                                return;
+                            }
                             throw new Error('Failed to update location');
                         }
 
@@ -208,7 +221,7 @@ export default function Map() {
             },
             geoOptions,
         );
-    }, [radius, lat, lng]);
+    }, [radius, lat, lng, isAuthenticated]);
 
     // Fetch nearby users
     const fetchNearbyUsers = useCallback(
@@ -572,17 +585,22 @@ export default function Map() {
                                 </div>
                                 <div className="flex-1">
                                     <h4 className="mb-1 text-xs font-semibold text-gray-900 md:text-sm">
-                                        Enable Location
+                                        {isAuthenticated
+                                            ? 'Enable Location'
+                                            : 'Share Your Location'}
                                     </h4>
                                     <p className="mb-2 text-xs text-gray-600 md:mb-3">
-                                        Find users near you by enabling location
-                                        access
+                                        {isAuthenticated
+                                            ? 'Find users near you by enabling location access'
+                                            : 'Log in to share your location and find people nearby'}
                                     </p>
                                     <button
                                         onClick={requestLocation}
                                         className="w-full rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700 md:px-4 md:py-2 md:text-sm"
                                     >
-                                        Enable Location
+                                        {isAuthenticated
+                                            ? 'Enable Location'
+                                            : 'Log In'}
                                     </button>
                                 </div>
                             </div>
