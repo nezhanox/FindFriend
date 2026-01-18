@@ -16,8 +16,6 @@ class LocationService
 
     private const CACHE_TTL = 30; // seconds
 
-    private const TEMP_USER_PREFIX = 'temp_';
-
     /**
      * Update user location in Redis and database.
      * Requires authenticated user.
