@@ -19,7 +19,7 @@ class LocationController extends Controller
      * Update user location.
      *
      * POST /api/location/update
-     * Body: { "lat": 50.4501, "lng": 30.5234 }
+     * Body: { "lat": 50.4501, "lng": 30.5234, "address": "вул. Хрещатик, 1, Київ" }
      * Response: { "user_id": 123, "message": "Location updated successfully" }
      *
      * Requires authentication.
@@ -29,12 +29,14 @@ class LocationController extends Controller
         $validated = $request->validate([
             'lat' => ['required', 'numeric', 'min:-90', 'max:90'],
             'lng' => ['required', 'numeric', 'min:-180', 'max:180'],
+            'address' => ['nullable', 'string', 'max:500'],
         ]);
 
         try {
             $userId = $this->locationService->updateLocation(
                 lat: (float) $validated['lat'],
-                lng: (float) $validated['lng']
+                lng: (float) $validated['lng'],
+                address: $validated['address'] ?? null
             );
 
             return response()->json([

@@ -166,11 +166,36 @@ export default function Map() {
                     lastUpdateTime.current = now;
 
                     try {
+                        // Get address from reverse geocoding
+                        let address = null;
+                        try {
+                            const geocodeResponse = await fetch(
+                                `https://api.mapbox.com/geocoding/v5/mapbox.places/${userLng},${userLat}.json?access_token=${import.meta.env.VITE_MAPBOX_TOKEN}`,
+                            );
+                            if (geocodeResponse.ok) {
+                                const geocodeData =
+                                    await geocodeResponse.json();
+                                if (
+                                    geocodeData.features &&
+                                    geocodeData.features.length > 0
+                                ) {
+                                    address =
+                                        geocodeData.features[0].place_name;
+                                }
+                            }
+                        } catch (geocodeErr) {
+                            console.error(
+                                'Reverse geocoding error:',
+                                geocodeErr,
+                            );
+                        }
+
                         const response = await axios.post(
                             '/api/location/update',
                             {
                                 lat: userLat,
                                 lng: userLng,
+                                address: address,
                             },
                         );
 
@@ -316,7 +341,7 @@ export default function Map() {
 
     // Handle location selection from search
     const handleLocationSelect = useCallback(
-        async (selectedLat: number, selectedLng: number) => {
+        async (selectedLat: number, selectedLng: number, address: string) => {
             if (!isAuthenticated) {
                 router.visit('/login');
                 return;
@@ -359,6 +384,7 @@ export default function Map() {
                 const response = await axios.post('/api/location/update', {
                     lat: selectedLat,
                     lng: selectedLng,
+                    address: address,
                 });
 
                 console.log('Location updated:', response.data);

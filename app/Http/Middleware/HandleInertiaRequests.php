@@ -58,7 +58,7 @@ class HandleInertiaRequests extends Middleware
                     'age' => $user->age,
                     'gender' => $user->gender,
                     'location' => $user->location ? [
-                        'address' => $user->location->location ?? null,
+                        'address' => $user->location->address,
                         'lat' => $user->location->lat,
                         'lng' => $user->location->lng,
                     ] : null,

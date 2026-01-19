@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
  * @property int|null $user_id
  * @property float $lat
  * @property float $lng
+ * @property string|null $address
  * @property string $location
  * @property bool $is_visible
  * @property \Illuminate\Support\Carbon $last_updated
@@ -27,6 +28,7 @@ use Illuminate\Support\Facades\DB;
  * @method static \Illuminate\Database\Eloquent\Builder|UserLocation whereUserId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|UserLocation whereLat($value)
  * @method static \Illuminate\Database\Eloquent\Builder|UserLocation whereLng($value)
+ * @method static \Illuminate\Database\Eloquent\Builder|UserLocation whereAddress($value)
  * @method static \Illuminate\Database\Eloquent\Builder|UserLocation whereLocation($value)
  * @method static \Illuminate\Database\Eloquent\Builder|UserLocation whereIsVisible($value)
  * @method static \Illuminate\Database\Eloquent\Builder|UserLocation whereLastUpdated($value)
@@ -41,6 +43,7 @@ class UserLocation extends Model
         'user_id',
         'lat',
         'lng',
+        'address',
         'is_visible',
         'last_updated',
     ];

@@ -22,7 +22,7 @@ class LocationService
      *
      * @throws \RuntimeException if user is not authenticated
      */
-    public function updateLocation(float $lat, float $lng): int
+    public function updateLocation(float $lat, float $lng, ?string $address = null): int
     {
         $userId = auth()->id();
 
@@ -36,6 +36,7 @@ class LocationService
             [
                 'lat' => $lat,
                 'lng' => $lng,
+                'address' => $address,
                 'is_visible' => true,
                 'last_updated' => now(),
             ]
