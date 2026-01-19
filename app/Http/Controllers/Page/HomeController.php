@@ -34,9 +34,25 @@ class HomeController extends Controller
 
         $currentUserId = auth()->id();
 
+        // Get saved location for authenticated user
+        $savedLocation = null;
+        if ($currentUserId) {
+            $userLocation = UserLocation::query()
+                ->where('user_id', $currentUserId)
+                ->first();
+
+            if ($userLocation) {
+                $savedLocation = [
+                    'lat' => $userLocation->lat,
+                    'lng' => $userLocation->lng,
+                ];
+            }
+        }
+
         return Inertia::render('Map', [
             'allUsers' => $allUsers,
             'currentUserId' => $currentUserId,
+            'savedLocation' => $savedLocation,
         ]);
     }
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\ConversationController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
@@ -29,4 +30,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/mark-all-as-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-as-read');
         Route::delete('/{notification}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
     });
+});
+
+Route::middleware('auth')->prefix('api/location')->group(function (): void {
+    Route::post('/update', [LocationController::class, 'update'])->name('api.location.update');
+    Route::get('/nearby', [LocationController::class, 'nearby'])->name('api.location.nearby');
 });

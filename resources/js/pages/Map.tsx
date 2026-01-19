@@ -1,12 +1,9 @@
-import AppLayout from '@/Layouts/AppLayout';
+import axios from '@/bootstrap';
 import LocationSearch from '@/components/LocationSearch';
 import PageTransition from '@/components/PageTransition';
 import UserList from '@/components/UserList';
-import {
-    LocationUpdate,
-    NearbyUsersResponse,
-    UserMarker,
-} from '@/types/location';
+import AppLayout from '@/Layouts/AppLayout';
+import { NearbyUsersResponse, UserMarker } from '@/types/location';
 import { router, usePage } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -65,10 +62,15 @@ interface PageProps {
     allUsers: UserMarker[];
     currentUserId: number | null;
     sessionId: string;
+    savedLocation?: {
+        lat: number;
+        lng: number;
+    } | null;
 }
 
 export default function Map() {
-    const { auth, allUsers, currentUserId } = usePage<PageProps>().props;
+    const { auth, allUsers, currentUserId, savedLocation } =
+        usePage<PageProps>().props;
     const isAuthenticated = !!auth?.user;
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<mapboxgl.Map | null>(null);
@@ -77,8 +79,13 @@ export default function Map() {
         new globalThis.Map(),
     );
     const lastUpdateTime = useRef<number>(0);
-    const [lng, setLng] = useState<number>(30.5234);
-    const [lat, setLat] = useState<number>(50.4501);
+
+    // Use saved location or default to Kyiv
+    const defaultLat = savedLocation?.lat ?? 50.4501;
+    const defaultLng = savedLocation?.lng ?? 30.5234;
+
+    const [lng, setLng] = useState<number>(defaultLng);
+    const [lat, setLat] = useState<number>(defaultLat);
     const [zoom] = useState<number>(12);
     const [radius, setRadius] = useState<number>(5);
     const [loading, setLoading] = useState<boolean>(true);
@@ -86,7 +93,8 @@ export default function Map() {
     const [error, setError] = useState<string | null>(null);
     const [nearby, setNearby] = useState<UserMarker[]>([]);
     const [locationRequested, setLocationRequested] = useState<boolean>(false);
-    const [locationGranted, setLocationGranted] = useState<boolean>(false);
+    const [locationGranted, setLocationGranted] =
+        useState<boolean>(!!savedLocation);
     const [showSidebar, setShowSidebar] = useState<boolean>(false);
 
     // Filter users for map display - only show users online within the last hour
@@ -158,48 +166,41 @@ export default function Map() {
                     lastUpdateTime.current = now;
 
                     try {
-                        const response = await fetch('/api/location/update', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                Accept: 'application/json',
-                            },
-                            body: JSON.stringify({
+                        const response = await axios.post(
+                            '/api/location/update',
+                            {
                                 lat: userLat,
                                 lng: userLng,
-                            }),
-                        });
+                            },
+                        );
 
-                        if (!response.ok) {
-                            if (response.status === 401) {
-                                setError(
-                                    'Please log in to share your location',
-                                );
-                                router.visit('/login');
-                                return;
-                            }
-                            throw new Error('Failed to update location');
-                        }
-
-                        const data: LocationUpdate = await response.json();
-                        console.log('Location updated:', data);
-                    } catch (err) {
+                        console.log('Location updated:', response.data);
+                    } catch (err: unknown) {
                         console.error('Error updating location:', err);
+                        if (
+                            err &&
+                            typeof err === 'object' &&
+                            'response' in err &&
+                            err.response &&
+                            typeof err.response === 'object' &&
+                            'status' in err.response &&
+                            err.response.status === 401
+                        ) {
+                            setError('Please log in to share your location');
+                            router.visit('/login');
+                            return;
+                        }
                         setError('Failed to update location on server');
                     }
                 }
 
                 // Fetch nearby users
                 try {
-                    const nearbyResponse = await fetch(
+                    const nearbyResponse = await axios.get<NearbyUsersResponse>(
                         `/api/location/nearby?lat=${userLat}&lng=${userLng}&radius=${radius}`,
                     );
 
-                    if (nearbyResponse.ok) {
-                        const nearbyData: NearbyUsersResponse =
-                            await nearbyResponse.json();
-                        setNearby(nearbyData.users);
-                    }
+                    setNearby(nearbyResponse.data.users);
                 } catch (err) {
                     console.error('Error fetching nearby users:', err);
                 }
@@ -237,12 +238,12 @@ export default function Map() {
                     setLocationGranted(true); // Allow showing the map with default location
 
                     // Fetch nearby users with default coordinates (Kyiv, Ukraine)
-                    fetch(
-                        `/api/location/nearby?lat=${lat}&lng=${lng}&radius=${radius}`,
-                    )
-                        .then((res) => (res.ok ? res.json() : Promise.reject()))
-                        .then((data: NearbyUsersResponse) => {
-                            setNearby(data.users);
+                    axios
+                        .get<NearbyUsersResponse>(
+                            `/api/location/nearby?lat=${lat}&lng=${lng}&radius=${radius}`,
+                        )
+                        .then((response) => {
+                            setNearby(response.data.users);
                         })
                         .catch((err) =>
                             console.error('Error fetching nearby users:', err),
@@ -258,17 +259,11 @@ export default function Map() {
         async (userLat: number, userLng: number, searchRadius: number) => {
             setFetchingNearby(true);
             try {
-                const nearbyResponse = await fetch(
+                const nearbyResponse = await axios.get<NearbyUsersResponse>(
                     `/api/location/nearby?lat=${userLat}&lng=${userLng}&radius=${searchRadius}`,
                 );
 
-                if (!nearbyResponse.ok) {
-                    throw new Error('Failed to fetch nearby users');
-                }
-
-                const nearbyData: NearbyUsersResponse =
-                    await nearbyResponse.json();
-                setNearby(nearbyData.users);
+                setNearby(nearbyResponse.data.users);
             } catch (err) {
                 console.error('Error fetching nearby users:', err);
             } finally {
@@ -287,26 +282,12 @@ export default function Map() {
             }
 
             try {
-                const response = await fetch('/chat/messages', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN':
-                            document
-                                .querySelector('meta[name="csrf-token"]')
-                                ?.getAttribute('content') || '',
-                    },
-                    body: JSON.stringify({
-                        recipient_id: userId,
-                        content: 'Hi! 👋',
-                    }),
+                await axios.post('/chat/messages', {
+                    recipient_id: userId,
+                    content: 'Hi! 👋',
                 });
 
-                if (response.ok) {
-                    router.visit('/chat');
-                } else {
-                    console.error('Failed to start chat');
-                }
+                router.visit('/chat');
             } catch (error) {
                 console.error('Error starting chat:', error);
             }
@@ -375,42 +356,34 @@ export default function Map() {
 
             // Update location on server
             try {
-                const response = await fetch('/api/location/update', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Accept: 'application/json',
-                    },
-                    body: JSON.stringify({
-                        lat: selectedLat,
-                        lng: selectedLng,
-                    }),
+                const response = await axios.post('/api/location/update', {
+                    lat: selectedLat,
+                    lng: selectedLng,
                 });
 
-                if (!response.ok) {
-                    if (response.status === 401) {
-                        setError('Please log in to share your location');
-                        router.visit('/login');
-                        return;
-                    }
-                    throw new Error('Failed to update location');
-                }
-
-                const data: LocationUpdate = await response.json();
-                console.log('Location updated:', data);
+                console.log('Location updated:', response.data);
 
                 // Fetch nearby users
-                const nearbyResponse = await fetch(
+                const nearbyResponse = await axios.get<NearbyUsersResponse>(
                     `/api/location/nearby?lat=${selectedLat}&lng=${selectedLng}&radius=${radius}`,
                 );
 
-                if (nearbyResponse.ok) {
-                    const nearbyData: NearbyUsersResponse =
-                        await nearbyResponse.json();
-                    setNearby(nearbyData.users);
-                }
-            } catch (err) {
+                setNearby(nearbyResponse.data.users);
+            } catch (err: unknown) {
                 console.error('Error updating location:', err);
+                if (
+                    err &&
+                    typeof err === 'object' &&
+                    'response' in err &&
+                    err.response &&
+                    typeof err.response === 'object' &&
+                    'status' in err.response &&
+                    err.response.status === 401
+                ) {
+                    setError('Please log in to share your location');
+                    router.visit('/login');
+                    return;
+                }
                 setError('Failed to update location on server');
             }
         },
@@ -469,6 +442,29 @@ export default function Map() {
                     'line-opacity': 0.6,
                 },
             });
+
+            // If there's a saved location, add user marker and fetch nearby users
+            if (savedLocation) {
+                const el = document.createElement('div');
+                el.className = 'user-marker';
+                el.style.backgroundColor = '#3b82f6';
+                el.style.width = '20px';
+                el.style.height = '20px';
+                el.style.borderRadius = '50%';
+                el.style.border = '3px solid white';
+                el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+
+                userMarker.current = new mapboxgl.Marker(el)
+                    .setLngLat([savedLocation.lng, savedLocation.lat])
+                    .addTo(map.current);
+
+                // Fetch nearby users for saved location
+                void fetchNearbyUsers(
+                    savedLocation.lat,
+                    savedLocation.lng,
+                    radius,
+                );
+            }
         });
 
         // Don't auto-request location - wait for user gesture

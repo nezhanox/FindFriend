@@ -26,13 +26,6 @@ class LocationController extends Controller
      */
     public function update(Request $request): JsonResponse
     {
-        if (! auth()->check()) {
-            return response()->json([
-                'error' => 'Unauthorized',
-                'message' => 'You must be logged in to update location',
-            ], 401);
-        }
-
         $validated = $request->validate([
             'lat' => ['required', 'numeric', 'min:-90', 'max:90'],
             'lng' => ['required', 'numeric', 'min:-180', 'max:180'],
