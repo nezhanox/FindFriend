@@ -5,6 +5,7 @@ use App\Http\Controllers\ConversationController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Page\HomeController;
+use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 require __DIR__.'/auth.php';
@@ -12,6 +13,12 @@ require __DIR__.'/auth.php';
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
 Route::middleware('auth')->group(function () {
+    // Profile routes
+    Route::prefix('profile')->group(function () {
+        Route::post('/update', [ProfileController::class, 'update'])->name('profile.update');
+        Route::delete('/avatar', [ProfileController::class, 'deleteAvatar'])->name('profile.delete-avatar');
+    });
+
     // Chat routes
     Route::prefix('chat')->group(function () {
         Route::get('/', [ConversationController::class, 'index'])->name('chat.index');
