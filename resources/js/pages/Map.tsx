@@ -7,6 +7,7 @@ import { NearbyUsersResponse, UserMarker } from '@/types/location';
 import { router, usePage } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Users } from 'lucide-react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -96,6 +97,7 @@ export default function Map() {
     const [locationGranted, setLocationGranted] =
         useState<boolean>(!!savedLocation);
     const [showSidebar, setShowSidebar] = useState<boolean>(false);
+    const [showOnlyFriends, setShowOnlyFriends] = useState<boolean>(false);
 
     // Filter users for map display - only show users online within the last hour
     const onlineUsers = useMemo(() => {
@@ -1034,6 +1036,33 @@ export default function Map() {
                                 </svg>
                             </button>
                         </div>
+
+                        {/* Friends Filter Toggle */}
+                        {isAuthenticated && (
+                            <div className="mt-2 flex gap-2">
+                                <button
+                                    onClick={() => setShowOnlyFriends(false)}
+                                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                                        !showOnlyFriends
+                                            ? 'bg-blue-600 text-white shadow-md'
+                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    }`}
+                                >
+                                    Всі
+                                </button>
+                                <button
+                                    onClick={() => setShowOnlyFriends(true)}
+                                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                                        showOnlyFriends
+                                            ? 'bg-blue-600 text-white shadow-md'
+                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    }`}
+                                >
+                                    <Users className="size-3" />
+                                    Друзі
+                                </button>
+                            </div>
+                        )}
                     </div>
                     <div className="flex-1 overflow-y-auto">
                         <UserList
@@ -1041,6 +1070,8 @@ export default function Map() {
                             isLoading={fetchingNearby}
                             onUserClick={handleUserClick}
                             isAuthenticated={isAuthenticated}
+                            showOnlyFriends={showOnlyFriends}
+                            currentUserId={currentUserId}
                         />
                     </div>
                 </motion.div>

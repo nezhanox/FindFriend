@@ -1,13 +1,16 @@
+import axios from '@/bootstrap';
 import { UserMarker } from '@/types/location';
 import { router } from '@inertiajs/react';
-import { MessageCircle } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { MessageCircle, UserCheck, UserPlus } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
 interface UserListProps {
     users: UserMarker[];
     isLoading: boolean;
     onUserClick: (user: UserMarker) => void;
     isAuthenticated?: boolean;
+    showOnlyFriends?: boolean;
+    currentUserId?: number | null;
 }
 
 function getMinutesSinceLastSeen(
@@ -33,14 +36,42 @@ export default function UserList({
     isLoading,
     onUserClick,
     isAuthenticated = false,
+    showOnlyFriends = false,
+    currentUserId = null,
 }: UserListProps) {
     const [activeTab, setActiveTab] = useState<'online' | 'offline'>('online');
+    const [friendIds, setFriendIds] = useState<Set<number>>(new Set());
+    const [loadingFriendship, setLoadingFriendship] = useState<number | null>(
+        null,
+    );
+
+    // Load friend IDs
+    useEffect(() => {
+        if (isAuthenticated) {
+            axios
+                .get<{ friends: Array<{ id: number }>; count: number }>(
+                    '/friends',
+                )
+                .then((response) => {
+                    const ids = new Set(response.data.friends.map((f) => f.id));
+                    setFriendIds(ids);
+                })
+                .catch((error) => {
+                    console.error('Failed to load friends:', error);
+                });
+        }
+    }, [isAuthenticated]);
 
     const { onlineUsers, offlineUsers } = useMemo(() => {
         const online: UserMarker[] = [];
         const offline: UserMarker[] = [];
 
-        users.forEach((user) => {
+        // Filter by friends if needed
+        const filteredUsers = showOnlyFriends
+            ? users.filter((user) => friendIds.has(user.id))
+            : users;
+
+        filteredUsers.forEach((user) => {
             const minutes = getMinutesSinceLastSeen(user.last_seen_at);
             if (minutes < 60) {
                 online.push(user);
@@ -50,7 +81,7 @@ export default function UserList({
         });
 
         return { onlineUsers: online, offlineUsers: offline };
-    }, [users]);
+    }, [users, showOnlyFriends, friendIds]);
 
     const displayedUsers = activeTab === 'online' ? onlineUsers : offlineUsers;
 
@@ -87,6 +118,41 @@ export default function UserList({
             }
         } catch (error) {
             console.error('Error starting chat:', error);
+        }
+    };
+
+    const handleToggleFriend = async (
+        e: React.MouseEvent,
+        userId: number,
+        isFriend: boolean,
+    ) => {
+        e.stopPropagation();
+
+        if (!isAuthenticated) {
+            router.visit('/login');
+            return;
+        }
+
+        setLoadingFriendship(userId);
+
+        try {
+            if (isFriend) {
+                // Remove friend
+                await axios.delete(`/friends/${userId}`);
+                setFriendIds((prev) => {
+                    const newSet = new Set(prev);
+                    newSet.delete(userId);
+                    return newSet;
+                });
+            } else {
+                // Add friend
+                await axios.post('/friends', { friend_id: userId });
+                setFriendIds((prev) => new Set([...prev, userId]));
+            }
+        } catch (error) {
+            console.error('Failed to toggle friendship:', error);
+        } finally {
+            setLoadingFriendship(null);
         }
     };
     if (isLoading) {
@@ -257,16 +323,61 @@ export default function UserList({
                                             )}
                                         </div>
 
-                                        {/* Chat Button */}
-                                        <button
-                                            onClick={(e) =>
-                                                handleStartChat(e, user.id)
-                                            }
-                                            className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 px-2.5 py-1 text-[10px] font-medium text-white shadow-sm transition-all hover:scale-105 hover:shadow-md md:mt-2 md:gap-1.5 md:px-3 md:py-1.5 md:text-xs"
-                                        >
-                                            <MessageCircle className="size-3 md:size-3.5" />
-                                            Chat
-                                        </button>
+                                        {/* Action Buttons */}
+                                        <div className="mt-1.5 flex gap-1.5 md:mt-2 md:gap-2">
+                                            <button
+                                                onClick={(e) =>
+                                                    handleStartChat(e, user.id)
+                                                }
+                                                className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 px-2.5 py-1 text-[10px] font-medium text-white shadow-sm transition-all hover:scale-105 hover:shadow-md md:gap-1.5 md:px-3 md:py-1.5 md:text-xs"
+                                            >
+                                                <MessageCircle className="size-3 md:size-3.5" />
+                                                Чат
+                                            </button>
+
+                                            {isAuthenticated &&
+                                                user.id !== currentUserId && (
+                                                    <button
+                                                        onClick={(e) =>
+                                                            handleToggleFriend(
+                                                                e,
+                                                                user.id,
+                                                                friendIds.has(
+                                                                    user.id,
+                                                                ),
+                                                            )
+                                                        }
+                                                        disabled={
+                                                            loadingFriendship ===
+                                                            user.id
+                                                        }
+                                                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-medium shadow-sm transition-all hover:scale-105 hover:shadow-md disabled:opacity-50 md:gap-1.5 md:px-3 md:py-1.5 md:text-xs ${
+                                                            friendIds.has(
+                                                                user.id,
+                                                            )
+                                                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                                        }`}
+                                                    >
+                                                        {loadingFriendship ===
+                                                        user.id ? (
+                                                            <div className="h-3 w-3 animate-spin rounded-full border-2 border-gray-700 border-t-transparent md:h-3.5 md:w-3.5"></div>
+                                                        ) : friendIds.has(
+                                                              user.id,
+                                                          ) ? (
+                                                            <>
+                                                                <UserCheck className="size-3 md:size-3.5" />
+                                                                Друг
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <UserPlus className="size-3 md:size-3.5" />
+                                                                Додати
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                )}
+                                        </div>
                                     </div>
                                 </div>
                             </button>

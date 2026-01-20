@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\ConversationController;
+use App\Http\Controllers\FriendshipController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Page\HomeController;
@@ -36,6 +37,19 @@ Route::middleware('auth')->group(function () {
         Route::post('/{notification}/mark-as-read', [NotificationController::class, 'markAsRead'])->name('notifications.mark-as-read');
         Route::post('/mark-all-as-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-as-read');
         Route::delete('/{notification}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
+    });
+
+    // Friendship routes
+    Route::prefix('friends')->group(function () {
+        Route::get('/', [FriendshipController::class, 'index'])->name('friends.index');
+        Route::post('/', [FriendshipController::class, 'store'])->name('friends.store');
+        Route::delete('/{friendId}', [FriendshipController::class, 'destroy'])->name('friends.destroy');
+        Route::get('/{userId}/check', [FriendshipController::class, 'check'])->name('friends.check');
+
+        // Friend requests
+        Route::get('/requests/pending', [FriendshipController::class, 'pendingRequests'])->name('friends.requests.pending');
+        Route::post('/requests/{requestId}/accept', [FriendshipController::class, 'accept'])->name('friends.requests.accept');
+        Route::post('/requests/{requestId}/reject', [FriendshipController::class, 'reject'])->name('friends.requests.reject');
     });
 });
 

@@ -1,11 +1,13 @@
 import ConversationItem from '@/components/Chat/ConversationItem';
+import FriendList from '@/components/FriendList';
+import FriendRequestList from '@/components/FriendRequestList';
 import PageTransition from '@/components/PageTransition';
 import AppLayout from '@/Layouts/AppLayout';
 import { Conversation } from '@/types/chat';
 import { Head, Link } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
 import { motion } from 'framer-motion';
-import { Map as MapIcon, MessageCircle } from 'lucide-react';
+import { Map as MapIcon, MessageCircle, UserPlus, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 interface Props {
@@ -15,6 +17,9 @@ interface Props {
 
 export default function ChatIndex({ conversations, currentUserId }: Props) {
     const [typingUsers, setTypingUsers] = useState<Set<number>>(new Set());
+    const [view, setView] = useState<'conversations' | 'friends' | 'requests'>(
+        'conversations',
+    );
     const typingTimeoutRefs = useRef<Map<number, NodeJS.Timeout>>(new Map());
 
     useEffect(() => {
@@ -108,15 +113,28 @@ export default function ChatIndex({ conversations, currentUserId }: Props) {
                         <div className="flex items-center justify-between gap-2 md:gap-3">
                             <div className="flex items-center gap-2 md:gap-3">
                                 <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/30 md:size-12 md:rounded-2xl">
-                                    <MessageCircle className="size-5 text-white md:size-6" />
+                                    {view === 'conversations' ? (
+                                        <MessageCircle className="size-5 text-white md:size-6" />
+                                    ) : view === 'friends' ? (
+                                        <Users className="size-5 text-white md:size-6" />
+                                    ) : (
+                                        <UserPlus className="size-5 text-white md:size-6" />
+                                    )}
                                 </div>
                                 <div>
                                     <h1 className="text-xl font-bold text-gray-900 md:text-2xl dark:text-white">
-                                        Messages
+                                        {view === 'conversations'
+                                            ? 'Повідомлення'
+                                            : view === 'friends'
+                                              ? 'Друзі'
+                                              : 'Запрошення'}
                                     </h1>
                                     <p className="text-xs text-gray-600 md:text-sm dark:text-gray-400">
-                                        {conversations.length} conversation
-                                        {conversations.length !== 1 ? 's' : ''}
+                                        {view === 'conversations'
+                                            ? `${conversations.length} ${conversations.length === 1 ? 'розмова' : 'розмов'}`
+                                            : view === 'friends'
+                                              ? 'Список ваших друзів'
+                                              : 'Вхідні запрошення в друзі'}
                                     </p>
                                 </div>
                             </div>
@@ -137,70 +155,138 @@ export default function ChatIndex({ conversations, currentUserId }: Props) {
                                 >
                                     <MapIcon className="size-3.5 md:size-4" />
                                     <span className="hidden sm:inline">
-                                        Map
+                                        Мапа
                                     </span>
                                 </Link>
                             </motion.div>
                         </div>
+
+                        {/* Toggle Buttons */}
+                        <div className="mt-4 flex gap-2">
+                            <button
+                                onClick={() => setView('conversations')}
+                                className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-all md:text-sm ${
+                                    view === 'conversations'
+                                        ? 'bg-blue-600 text-white shadow-lg'
+                                        : 'bg-white/50 text-gray-700 hover:bg-white/70 dark:bg-gray-800/50 dark:text-gray-300 dark:hover:bg-gray-800/70'
+                                }`}
+                            >
+                                <MessageCircle className="size-3.5 md:size-4" />
+                                <span className="hidden sm:inline">Чати</span>
+                            </button>
+                            <button
+                                onClick={() => setView('friends')}
+                                className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-all md:text-sm ${
+                                    view === 'friends'
+                                        ? 'bg-blue-600 text-white shadow-lg'
+                                        : 'bg-white/50 text-gray-700 hover:bg-white/70 dark:bg-gray-800/50 dark:text-gray-300 dark:hover:bg-gray-800/70'
+                                }`}
+                            >
+                                <Users className="size-3.5 md:size-4" />
+                                <span className="hidden sm:inline">Друзі</span>
+                            </button>
+                            <button
+                                onClick={() => setView('requests')}
+                                className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-all md:text-sm ${
+                                    view === 'requests'
+                                        ? 'bg-blue-600 text-white shadow-lg'
+                                        : 'bg-white/50 text-gray-700 hover:bg-white/70 dark:bg-gray-800/50 dark:text-gray-300 dark:hover:bg-gray-800/70'
+                                }`}
+                            >
+                                <UserPlus className="size-3.5 md:size-4" />
+                                <span className="hidden sm:inline">
+                                    Запрошення
+                                </span>
+                            </button>
+                        </div>
                     </motion.div>
 
-                    {/* Conversations List */}
-                    <div className="space-y-2 md:space-y-3">
-                        {conversations.length === 0 ? (
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{
-                                    type: 'spring',
-                                    stiffness: 300,
-                                    damping: 30,
-                                }}
-                                className="overflow-hidden rounded-2xl border border-white/20 bg-white/10 p-8 text-center shadow-2xl backdrop-blur-2xl backdrop-saturate-150 md:rounded-3xl md:p-12"
-                            >
-                                <MessageCircle className="mx-auto mb-3 size-12 text-gray-400 md:mb-4 md:size-16" />
-                                <h3 className="mb-2 text-base font-semibold text-gray-900 md:text-lg dark:text-white">
-                                    No conversations yet
-                                </h3>
-                                <p className="text-xs text-gray-600 md:text-sm dark:text-gray-400">
-                                    Start a chat by finding users on the map
-                                </p>
-                            </motion.div>
-                        ) : (
-                            <motion.div
-                                initial="hidden"
-                                animate="visible"
-                                variants={{
-                                    visible: {
-                                        transition: {
-                                            staggerChildren: 0.05,
+                    {/* Content */}
+                    {view === 'conversations' ? (
+                        <div className="space-y-2 md:space-y-3">
+                            {conversations.length === 0 ? (
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{
+                                        type: 'spring',
+                                        stiffness: 300,
+                                        damping: 30,
+                                    }}
+                                    className="overflow-hidden rounded-2xl border border-white/20 bg-white/10 p-8 text-center shadow-2xl backdrop-blur-2xl backdrop-saturate-150 md:rounded-3xl md:p-12"
+                                >
+                                    <MessageCircle className="mx-auto mb-3 size-12 text-gray-400 md:mb-4 md:size-16" />
+                                    <h3 className="mb-2 text-base font-semibold text-gray-900 md:text-lg dark:text-white">
+                                        Поки немає розмов
+                                    </h3>
+                                    <p className="text-xs text-gray-600 md:text-sm dark:text-gray-400">
+                                        Почніть чат, знайшовши користувачів на
+                                        мапі
+                                    </p>
+                                </motion.div>
+                            ) : (
+                                <motion.div
+                                    initial="hidden"
+                                    animate="visible"
+                                    variants={{
+                                        visible: {
+                                            transition: {
+                                                staggerChildren: 0.05,
+                                            },
                                         },
-                                    },
-                                }}
-                            >
-                                {conversations.map((conversation) => (
-                                    <motion.div
-                                        key={conversation.id}
-                                        variants={{
-                                            hidden: { opacity: 0, y: 20 },
-                                            visible: { opacity: 1, y: 0 },
-                                        }}
-                                        transition={{
-                                            type: 'spring',
-                                            stiffness: 300,
-                                            damping: 30,
-                                        }}
-                                    >
-                                        <ConversationItem
-                                            conversation={conversation}
-                                            isTyping={typingUsers.has(
-                                                conversation.other_user.id,
-                                            )}
-                                        />
-                                    </motion.div>
-                                ))}
-                            </motion.div>
-                        )}
-                    </div>
+                                    }}
+                                >
+                                    {conversations.map((conversation) => (
+                                        <motion.div
+                                            key={conversation.id}
+                                            variants={{
+                                                hidden: { opacity: 0, y: 20 },
+                                                visible: { opacity: 1, y: 0 },
+                                            }}
+                                            transition={{
+                                                type: 'spring',
+                                                stiffness: 300,
+                                                damping: 30,
+                                            }}
+                                        >
+                                            <ConversationItem
+                                                conversation={conversation}
+                                                isTyping={typingUsers.has(
+                                                    conversation.other_user.id,
+                                                )}
+                                            />
+                                        </motion.div>
+                                    ))}
+                                </motion.div>
+                            )}
+                        </div>
+                    ) : view === 'friends' ? (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{
+                                type: 'spring',
+                                stiffness: 300,
+                                damping: 30,
+                            }}
+                            className="overflow-hidden rounded-2xl border border-white/20 bg-white/10 shadow-2xl backdrop-blur-2xl backdrop-saturate-150 md:rounded-3xl"
+                        >
+                            <FriendList />
+                        </motion.div>
+                    ) : (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{
+                                type: 'spring',
+                                stiffness: 300,
+                                damping: 30,
+                            }}
+                            className="overflow-hidden rounded-2xl border border-white/20 bg-white/10 shadow-2xl backdrop-blur-2xl backdrop-saturate-150 md:rounded-3xl"
+                        >
+                            <FriendRequestList />
+                        </motion.div>
+                    )}
                 </div>
             </PageTransition>
         </AppLayout>
