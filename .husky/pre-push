@@ -1,19 +1,4 @@
 #!/bin/sh
 
-echo "🔍 Running pre-push checks..."
-
-# Debug functions check
-if git diff origin/$(git rev-parse --abbrev-ref HEAD) --name-only | grep '\.php$' | xargs grep -En '\b(dd|dump|ds|ray)\(' 2>/dev/null; then
-  echo "❌ Debug functions found"
-  exit 1
-fi
-
-# PHPStan
-echo "🔍 Running PHPStan..."
-docker compose exec -T laravel.test vendor/bin/phpstan analyse --memory-limit=2G || exit 1
-
-# Frontend lint
-echo "🔍 Linting frontend..."
-npm run lint || exit 1
-
-echo "✅ All checks passed"
+# Run unified checks in dev mode
+./scripts/checks.sh dev
