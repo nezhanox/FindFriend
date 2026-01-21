@@ -58,13 +58,27 @@ fi
 echo_info "Running checks in ${MODE} mode..."
 echo ""
 
-# 1. Check for debug functions (pre-push only)
+# 1. Check for debug functions (dev mode = pre-push)
 if [ "$MODE" = "dev" ]; then
-    echo_info "Checking for debug functions..."
-    if git diff origin/$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main") --name-only 2>/dev/null | grep '\.php$' | xargs grep -En '\b(dd|dump|ds|ray)\(' 2>/dev/null; then
-        echo_error "Debug functions found (dd, dump, ds, ray)"
-        exit 1
+    echo_info "Checking for debug functions in unpushed commits..."
+
+    # Get branch name
+    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+
+    # Check if origin branch exists
+    if git rev-parse --verify origin/$CURRENT_BRANCH >/dev/null 2>&1; then
+        PHP_FILES=$(git diff origin/$CURRENT_BRANCH --name-only 2>/dev/null | grep '\.php$' || true)
+
+        if [ -n "$PHP_FILES" ]; then
+            if echo "$PHP_FILES" | xargs grep -En '\b(dd|dump|ds|ray)\(' 2>/dev/null; then
+                echo_error "Debug functions found in unpushed commits (dd, dump, ds, ray)"
+                exit 1
+            fi
+        fi
+    else
+        echo_warning "Origin branch not found, skipping debug function check"
     fi
+
     echo_success "No debug functions found"
     echo ""
 fi
