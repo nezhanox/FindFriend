@@ -171,6 +171,7 @@ class User extends Authenticatable implements MustVerifyEmail
                 $this->belongsToMany(User::class, 'friendships', 'friend_id', 'user_id')
                     ->wherePivot('status', FriendshipStatus::Accepted)
                     ->withTimestamps()
+                    ->getQuery()
             );
     }
 

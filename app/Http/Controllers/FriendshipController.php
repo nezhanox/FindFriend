@@ -90,27 +90,22 @@ class FriendshipController extends Controller
             ->first();
 
         if ($existing) {
-            if ($existing->status === FriendshipStatus::Pending) {
-                return response()->json([
+            return match ($existing->status) {
+                FriendshipStatus::Pending => response()->json([
                     'message' => 'Запрошення вже надіслано',
-                ], 400);
-            }
-
-            if ($existing->status === FriendshipStatus::Accepted) {
-                return response()->json([
+                ], 400),
+                FriendshipStatus::Accepted => response()->json([
                     'message' => 'Цей користувач вже у вашому списку друзів',
-                ], 400);
-            }
+                ], 400),
+                FriendshipStatus::Rejected => (function () use ($existing) {
+                    $existing->restore();
+                    $existing->update(['status' => FriendshipStatus::Pending]);
 
-            // If rejected, restore it with pending status
-            if ($existing->status === FriendshipStatus::Rejected) {
-                $existing->restore();
-                $existing->update(['status' => FriendshipStatus::Pending]);
-
-                return response()->json([
-                    'message' => 'Запрошення надіслано',
-                ]);
-            }
+                    return response()->json([
+                        'message' => 'Запрошення надіслано',
+                    ]);
+                })(),
+            };
         }
 
         // Create pending friend request
