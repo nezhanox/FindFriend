@@ -5,6 +5,7 @@ RUN apk add --no-cache \
     postgresql-dev \
     libzip-dev \
     linux-headers \
+    brotli-dev \
     $PHPIZE_DEPS \
     && docker-php-ext-install \
     pdo_pgsql \
@@ -14,7 +15,8 @@ RUN apk add --no-cache \
     opcache \
     && pecl install swoole \
     && docker-php-ext-enable swoole \
-    && apk del $PHPIZE_DEPS
+    && apk del $PHPIZE_DEPS \
+    && apk add --no-cache brotli
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
