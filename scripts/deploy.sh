@@ -98,7 +98,7 @@ sleep 10
 MAX_ATTEMPTS=30
 ATTEMPT=0
 while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-    if docker compose -f "$COMPOSE_FILE" exec -T app php artisan octane:status > /dev/null 2>&1; then
+    if curl -sf http://localhost/health > /dev/null 2>&1; then
         echo_success "Application is healthy"
         break
     fi
@@ -143,7 +143,7 @@ echo ""
 
 # 13. Final health check
 echo_info "Running final health check..."
-if docker compose -f "$COMPOSE_FILE" exec -T app php artisan octane:status > /dev/null 2>&1; then
+if curl -sf http://localhost/health > /dev/null 2>&1; then
     echo_success "Deployment completed successfully! 🚀"
     echo ""
     echo_info "Deployment summary:"

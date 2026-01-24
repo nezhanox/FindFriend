@@ -1,142 +1,72 @@
-# syntax=docker/dockerfile:1
+# Base PHP image
+FROM php:8.4-cli-alpine AS base
 
-#
-# Stage 1: Base - Shared configuration
-#
-FROM php:8.4-fpm-alpine AS base
-
-# Install system dependencies
 RUN apk add --no-cache \
     postgresql-dev \
-    postgresql-client \
     libzip-dev \
-    oniguruma-dev \
-    icu-dev \
-    libpng-dev \
-    libjpeg-turbo-dev \
-    freetype-dev \
-    geos-dev \
-    proj-dev \
-    gdal-dev \
     linux-headers \
-    $PHPIZE_DEPS
-
-# Install PHP extensions
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) \
+    $PHPIZE_DEPS \
+    && docker-php-ext-install \
     pdo_pgsql \
     pgsql \
     zip \
-    bcmath \
-    intl \
-    gd \
+    pcntl \
     opcache \
-    pcntl
+    && pecl install swoole \
+    && docker-php-ext-enable swoole \
+    && apk del $PHPIZE_DEPS
 
-# Install PostGIS extension
-RUN pecl install redis \
-    && docker-php-ext-enable redis
-
-# Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-#
-# Stage 2: Dependencies - Install dependencies
-#
+# Dependencies stage
 FROM base AS dependencies
 
-# Copy composer files
 COPY composer.json composer.lock ./
-
-# Install production dependencies with caching
-RUN --mount=type=cache,target=/root/.composer \
-    composer install \
+RUN composer install \
     --no-dev \
     --no-interaction \
+    --prefer-dist \
+    --optimize-autoloader \
     --no-scripts \
-    --no-autoloader \
-    --prefer-dist
+    --no-progress
 
-#
-# Stage 3: Frontend Builder - Build assets
-#
+# Frontend build stage
 FROM node:22-alpine AS frontend
 
 WORKDIR /app
-
-# Copy package files
 COPY package*.json ./
+RUN npm ci
 
-# Install node dependencies with caching
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci
-
-# Copy source files needed for build
-COPY resources ./resources
-COPY public ./public
-COPY vite.config.ts tsconfig.json ./
-
-# Build assets
+COPY . .
 RUN npm run build
 
-#
-# Stage 4: Production - Final production image
-#
-FROM base AS production
+# Production Octane stage
+FROM base AS octane
 
-# Set production environment
-ENV APP_ENV=production \
-    APP_DEBUG=false \
-    COMPOSER_ALLOW_SUPERUSER=1
-
-# Production PHP configuration
-COPY docker/php/production.ini /usr/local/etc/php/conf.d/production.ini
-
-# Copy dependencies from dependencies stage
-COPY --from=dependencies /var/www/html/vendor ./vendor
-
-# Copy application files
-COPY . .
-
-# Copy built assets from frontend stage
-COPY --from=frontend /app/public/build ./public/build
-
-# Generate optimized autoloader
-RUN composer dump-autoload --optimize --no-dev --classmap-authoritative
-
-# Set permissions
-RUN chown -R www-data:www-data storage bootstrap/cache \
-    && chmod -R 775 storage bootstrap/cache
-
-# Create non-root user
-USER www-data
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
-    CMD php artisan octane:status || exit 1
-
-# Expose port
-EXPOSE 9000
-
-# Default command
-CMD ["php-fpm"]
-
-#
-# Stage 5: Octane - Production with Laravel Octane (optional)
-#
-FROM production AS octane
-
-USER root
-
-# Install additional dependencies for Octane
 RUN apk add --no-cache supervisor
 
-COPY docker/supervisor/octane.conf /etc/supervisor/conf.d/octane.conf
+COPY --from=dependencies /var/www/html/vendor ./vendor
+COPY --from=frontend /app/public/build ./public/build
+COPY . .
 
-USER www-data
+RUN mkdir -p \
+    storage/framework/cache \
+    storage/framework/sessions \
+    storage/framework/views \
+    storage/logs \
+    bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
+
+# Octane config
+COPY docker/octane/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Health check endpoint
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD php artisan octane:status || exit 1
 
 EXPOSE 8000
 
-CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/conf.d/octane.conf"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
