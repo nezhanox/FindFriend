@@ -13,8 +13,8 @@ RUN apk add --no-cache \
     zip \
     pcntl \
     opcache \
-    && pecl install swoole \
-    && docker-php-ext-enable swoole \
+    && pecl install swoole redis \
+    && docker-php-ext-enable swoole redis \
     && apk del $PHPIZE_DEPS \
     && apk add --no-cache brotli
 
