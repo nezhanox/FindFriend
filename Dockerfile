@@ -32,10 +32,12 @@ RUN composer install \
     --no-scripts \
     --no-progress
 
-# Frontend build stage
-FROM node:22-alpine AS frontend
+# Frontend build stage (needs PHP for Laravel Vite plugin)
+FROM dependencies AS frontend
 
-WORKDIR /app
+# Install Node.js in PHP image
+RUN apk add --no-cache nodejs npm
+
 COPY package*.json ./
 RUN npm ci
 
@@ -48,7 +50,7 @@ FROM base AS octane
 RUN apk add --no-cache supervisor
 
 COPY --from=dependencies /var/www/html/vendor ./vendor
-COPY --from=frontend /app/public/build ./public/build
+COPY --from=frontend /var/www/html/public/build ./public/build
 COPY . .
 
 RUN mkdir -p \
