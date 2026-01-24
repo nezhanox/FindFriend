@@ -44,6 +44,11 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
+
+# Build args for Vite environment variables
+ARG VITE_MAPBOX_TOKEN
+ENV VITE_MAPBOX_TOKEN=$VITE_MAPBOX_TOKEN
+
 RUN npm run build
 
 # Production Octane stage
