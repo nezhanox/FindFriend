@@ -94,6 +94,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set lowercase image name
+        id: image-name
+        run: echo "IMAGE_NAME_LOWER=$(echo ${{ env.IMAGE_NAME }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -108,7 +112,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ steps.image-name.outputs.IMAGE_NAME_LOWER }}
           tags: |
             type=ref,event=branch
             type=sha,prefix={{branch}}-
@@ -122,8 +126,8 @@ jobs:
           target: octane
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ steps.image-name.outputs.IMAGE_NAME_LOWER }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ steps.image-name.outputs.IMAGE_NAME_LOWER }}:buildcache,mode=max
           build-args: |
             BUILDKIT_INLINE_CACHE=1
             VITE_MAPBOX_TOKEN=${{ secrets.VITE_MAPBOX_TOKEN }}
@@ -147,15 +151,8 @@ jobs:
           ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy to server
-        env:
-          SSH_KEY: ~/.ssh/deploy_key
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          DOCKER_REGISTRY: ${{ env.REGISTRY }}
-          IMAGE_NAME: ${{ env.IMAGE_NAME }}
         run: |
-          ssh -i $SSH_KEY $DEPLOY_USER@$DEPLOY_HOST "cd $DEPLOY_PATH && ./scripts/deploy.sh"
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "cd ${{ secrets.DEPLOY_PATH }} && ./scripts/deploy.sh"
 
       - name: Health check
         run: |
