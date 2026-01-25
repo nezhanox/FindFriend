@@ -8,12 +8,29 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
+// Validate required environment variables
+if (!import.meta.env.VITE_REVERB_APP_KEY) {
+    console.error(
+        'VITE_REVERB_APP_KEY is not set. WebSocket connections will fail.',
+    );
+}
+
+if (!import.meta.env.VITE_REVERB_HOST) {
+    console.error(
+        'VITE_REVERB_HOST is not set. WebSocket connections will fail.',
+    );
+}
+
 configureEcho({
     broadcaster: 'reverb',
     key: import.meta.env.VITE_REVERB_APP_KEY,
-    wsHost: import.meta.env.VITE_REVERB_HOST,
-    wsPort: import.meta.env.VITE_REVERB_PORT ?? 80,
-    wssPort: import.meta.env.VITE_REVERB_PORT ?? 443,
+    wsHost: import.meta.env.VITE_REVERB_HOST || window.location.hostname,
+    wsPort: import.meta.env.VITE_REVERB_PORT
+        ? Number.parseInt(import.meta.env.VITE_REVERB_PORT)
+        : 80,
+    wssPort: import.meta.env.VITE_REVERB_PORT
+        ? Number.parseInt(import.meta.env.VITE_REVERB_PORT)
+        : 443,
     forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
     enabledTransports: ['ws', 'wss'],
 });

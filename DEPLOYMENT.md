@@ -44,11 +44,28 @@ This means `VITE_REVERB_APP_KEY` was not set during Docker image build.
    git push
    ```
 
-### Error: Mapbox / Map-related AbortError
+### Error: WebSocket connection to 'wss://ws-.pusher.com/app/' failed
 
-This means `VITE_MAPBOX_TOKEN` was not set during Docker image build.
+This means `VITE_REVERB_HOST` was not set or is empty during Docker image build. The application falls back to Pusher's default host instead of your Reverb server.
 
 **Fix:**
+1. Add `VITE_REVERB_HOST` to GitHub Secrets with your domain (WITHOUT protocol):
+   - ✅ Correct: `findfriend.website`
+   - ❌ Wrong: `https://findfriend.website`
+2. Ensure all other VITE_REVERB_* secrets are set (see above)
+3. Push to trigger rebuild
+
+**To verify after rebuild:**
+Open browser console and check for:
+- ❌ "VITE_REVERB_HOST is not set" error
+- ❌ Connection to `ws-.pusher.com`
+- ✅ Should connect to `wss://findfriend.website:443`
+
+### Error: Mapbox / Map-related AbortError or ERR_BLOCKED_BY_CLIENT
+
+**ERR_BLOCKED_BY_CLIENT** - This is usually caused by ad-blockers or browser extensions blocking Mapbox telemetry. This is NOT critical and can be safely ignored as it only affects analytics.
+
+**If Mapbox maps don't load:**
 1. Add `VITE_MAPBOX_TOKEN` to GitHub Secrets
 2. Push to trigger rebuild
 
