@@ -128,9 +128,8 @@ docker compose -f "$COMPOSE_FILE" exec -T app php artisan event:cache
 echo_success "Caches optimized"
 echo ""
 
-# 11. Remove old containers and images
-echo_info "Cleaning up old containers and images..."
-docker compose -f "$COMPOSE_FILE" down --remove-orphans
+# 11. Remove old Docker images
+echo_info "Cleaning up old Docker images..."
 docker image prune -f --filter "until=72h"
 echo_success "Cleanup completed"
 echo ""
