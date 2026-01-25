@@ -18,12 +18,6 @@ services:
       - reverb
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: octane
-      args:
-        VITE_MAPBOX_TOKEN: ${VITE_MAPBOX_TOKEN}
     image: ${DOCKER_REGISTRY:-ghcr.io/your-username}/findfriend-app:latest
     container_name: findfriend-app
     restart: unless-stopped
