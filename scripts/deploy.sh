@@ -98,7 +98,7 @@ sleep 10
 MAX_ATTEMPTS=30
 ATTEMPT=0
 while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-    if curl -sf http://localhost/health > /dev/null 2>&1; then
+    if curl -fsS https://findfriend.website/health > /dev/null 2>&1; then
         echo_success "Application is healthy"
         break
     fi

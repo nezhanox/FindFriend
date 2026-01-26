@@ -35,12 +35,17 @@ services:
       - CACHE_STORE=redis
       - QUEUE_CONNECTION=redis
       - SESSION_DRIVER=redis
+      - SESSION_SECURE_COOKIE=true
+      - SANCTUM_STATEFUL_DOMAINS=findfriend.website
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       - BROADCAST_CONNECTION=reverb
       - REVERB_SERVER_HOST=reverb
       - REVERB_SERVER_PORT=8080
+      - REVERB_HOST=reverb
+      - REVERB_PORT=8080
+      - REVERB_SCHEME=http
       - REVERB_APP_ID=${REVERB_APP_ID}
       - REVERB_APP_KEY=${REVERB_APP_KEY}
       - REVERB_APP_SECRET=${REVERB_APP_SECRET}
