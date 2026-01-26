@@ -31,10 +31,8 @@
             }
         </style>
 
-        <title inertia>{{ config('app.name', 'FindFriend') }}</title>
-
-        <link rel="icon" href="/public/images/icon.png" type="image/png">
-        <link rel="apple-touch-icon" href="/public/images/icon.png">
+        <link rel="icon" href="{{ asset('images/icon.png') }}?v={{ filemtime(public_path('images/icon.png')) }}" type="image/png">
+        <link rel="apple-touch-icon" href="{{ asset('images/icon.png') }}?v={{ filemtime(public_path('images/icon.png')) }}">
 
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
