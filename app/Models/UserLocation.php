@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\DB;
@@ -37,6 +38,9 @@ use Illuminate\Support\Facades\DB;
  */
 class UserLocation extends Model
 {
+    /** @use HasFactory<\Database\Factories\UserLocationFactory> */
+    use HasFactory;
+
     public $timestamps = false;
 
     protected $fillable = [

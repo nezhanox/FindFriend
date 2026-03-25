@@ -5,9 +5,14 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateProfileRequest;
+use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class ProfileController extends Controller
 {
@@ -48,5 +53,50 @@ class ProfileController extends Controller
         }
 
         return redirect()->back()->with('success', 'Аватар видалено');
+    }
+
+    /**
+     * Show public profile page for a user.
+     */
+    public function show(User $user): Response
+    {
+        $currentUser = Auth::user();
+
+        $isFriend = $currentUser
+            ? $currentUser->isFriendsWith($user)
+            : false;
+
+        return Inertia::render('Profile/Show', [
+            'profileUser' => [
+                'id' => $user->getKey(),
+                'name' => $user->name,
+                'avatar' => $user->avatar,
+                'age' => $user->age,
+                'gender' => $user->gender,
+                'last_seen_at' => $user->last_seen_at?->toISOString(),
+            ],
+            'isFriend' => $isFriend,
+            'isOwn' => $currentUser?->getKey() === $user->getKey(),
+        ]);
+    }
+
+    /**
+     * Toggle map visibility for the authenticated user.
+     */
+    public function updateVisibility(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'is_visible' => ['required', 'boolean'],
+        ]);
+
+        $user = Auth::user();
+
+        if ($user->location) {
+            $user->location->update(['is_visible' => $validated['is_visible']]);
+        }
+
+        return response()->json([
+            'is_visible' => $validated['is_visible'],
+        ]);
     }
 }
