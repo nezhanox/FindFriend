@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Actions\Friendship\AcceptFriendRequestAction;
+use App\Actions\Friendship\RejectFriendRequestAction;
+use App\Actions\Friendship\SendFriendRequestAction;
 use App\Enums\FriendshipStatus;
 use App\Models\Friendship;
 use App\Models\User;
@@ -60,117 +63,38 @@ class FriendshipController extends Controller
     /**
      * Send a friend request.
      */
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, SendFriendRequestAction $sendRequest): JsonResponse
     {
         $validated = $request->validate([
             'friend_id' => ['required', 'integer', 'exists:users,id'],
         ]);
 
+        /** @var User $user */
         $user = Auth::user();
-        $friendId = (int) $validated['friend_id'];
 
-        // Can't add yourself as friend
-        if ($user->getKey() === $friendId) {
-            return response()->json([
-                'message' => 'Ви не можете додати себе в друзі',
-            ], 400);
-        }
-
-        // Check if active friendship or pending request already exists (including soft deleted)
-        $existing = Friendship::query()
-            ->withTrashed()
-            ->where(function ($query) use ($user, $friendId): void {
-                $query->where('user_id', $user->getKey())
-                    ->where('friend_id', $friendId);
-            })
-            ->orWhere(function ($query) use ($user, $friendId): void {
-                $query->where('user_id', $friendId)
-                    ->where('friend_id', $user->getKey());
-            })
-            ->first();
-
-        if ($existing) {
-            return match ($existing->status) {
-                FriendshipStatus::Pending => response()->json([
-                    'message' => 'Запрошення вже надіслано',
-                ], 400),
-                FriendshipStatus::Accepted => response()->json([
-                    'message' => 'Цей користувач вже у вашому списку друзів',
-                ], 400),
-                FriendshipStatus::Rejected => (function () use ($existing) {
-                    $existing->restore();
-                    $existing->update(['status' => FriendshipStatus::Pending]);
-
-                    return response()->json([
-                        'message' => 'Запрошення надіслано',
-                    ]);
-                })(),
-            };
-        }
-
-        // Create pending friend request
-        Friendship::query()->create([
-            'user_id' => $user->getKey(),
-            'friend_id' => $friendId,
-            'status' => FriendshipStatus::Pending,
-        ]);
-
-        return response()->json([
-            'message' => 'Запрошення надіслано',
-        ]);
+        return $sendRequest->execute($user, (int) $validated['friend_id']);
     }
 
     /**
      * Accept a friend request.
      */
-    public function accept(int $requestId): JsonResponse
+    public function accept(int $requestId, AcceptFriendRequestAction $acceptRequest): JsonResponse
     {
+        /** @var User $user */
         $user = Auth::user();
 
-        $friendship = Friendship::query()
-            ->where('id', $requestId)
-            ->where('friend_id', $user->getKey())
-            ->where('status', FriendshipStatus::Pending)
-            ->first();
-
-        if (! $friendship) {
-            return response()->json([
-                'message' => 'Запрошення не знайдено',
-            ], 404);
-        }
-
-        $friendship->update(['status' => FriendshipStatus::Accepted]);
-
-        return response()->json([
-            'message' => 'Запрошення прийнято',
-        ]);
+        return $acceptRequest->execute($user, $requestId);
     }
 
     /**
      * Reject a friend request (soft delete).
      */
-    public function reject(int $requestId): JsonResponse
+    public function reject(int $requestId, RejectFriendRequestAction $rejectRequest): JsonResponse
     {
+        /** @var User $user */
         $user = Auth::user();
 
-        $friendship = Friendship::query()
-            ->where('id', $requestId)
-            ->where('friend_id', $user->getKey())
-            ->where('status', FriendshipStatus::Pending)
-            ->first();
-
-        if (! $friendship) {
-            return response()->json([
-                'message' => 'Запрошення не знайдено',
-            ], 404);
-        }
-
-        $friendship->update(['status' => FriendshipStatus::Rejected]);
-        $friendship->delete(); // Soft delete
-
-        return response()->json([
-            'message' => 'Запрошення відхилено',
-        ]);
+        return $rejectRequest->execute($user, $requestId);
     }
 
     /**
