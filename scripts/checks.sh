@@ -47,10 +47,12 @@ run_command() {
 }
 
 # Determine PHP command
+DOCKER_RUNNING=false
 if [ "$USE_DOCKER" = "true" ] && [ "$MODE" = "dev" ]; then
     if docker compose ps app --status running 2>/dev/null | grep -q "app"; then
         PHP_CMD="docker compose exec -T app php"
         COMPOSER_CMD="docker compose exec -T app composer"
+        DOCKER_RUNNING=true
     else
         echo_warning "Docker 'app' service not running, using local PHP"
         PHP_CMD="php"
@@ -130,7 +132,11 @@ if [ "$MODE" != "deploy" ]; then
 fi
 
 # 6. PHPStan (static analysis)
-run_command "$PHP_CMD vendor/bin/phpstan analyse --memory-limit=2G --no-progress" "PHPStan (static analysis)"
+if [ "$MODE" = "dev" ] && [ "$DOCKER_RUNNING" = "false" ]; then
+    echo_warning "PHPStan skipped (Docker not running — vendor built for PHP 8.4)"
+else
+    run_command "$PHP_CMD vendor/bin/phpstan analyse --memory-limit=2G --no-progress" "PHPStan (static analysis)"
+fi
 echo ""
 
 # 7. Frontend checks
@@ -150,7 +156,11 @@ fi
 
 # 8. Run tests
 if [ "$SKIP_TESTS" != "true" ] && [ "$MODE" != "deploy" ]; then
-    run_command "$PHP_CMD vendor/bin/pest --colors=always --compact" "Tests"
+    if [ "$MODE" = "dev" ] && [ "$DOCKER_RUNNING" = "false" ]; then
+        echo_warning "Tests skipped (Docker not running — vendor built for PHP 8.4)"
+    else
+        run_command "$PHP_CMD vendor/bin/pest --colors=always --compact" "Tests"
+    fi
     echo ""
 fi
 
