@@ -48,8 +48,14 @@ run_command() {
 
 # Determine PHP command
 if [ "$USE_DOCKER" = "true" ] && [ "$MODE" = "dev" ]; then
-    PHP_CMD="docker compose exec -T laravel.test php"
-    COMPOSER_CMD="docker compose exec -T laravel.test composer"
+    if docker compose ps app --status running 2>/dev/null | grep -q "app"; then
+        PHP_CMD="docker compose exec -T app php"
+        COMPOSER_CMD="docker compose exec -T app composer"
+    else
+        echo_warning "Docker 'app' service not running, using local PHP"
+        PHP_CMD="php"
+        COMPOSER_CMD="composer"
+    fi
 else
     PHP_CMD="php"
     COMPOSER_CMD="composer"
