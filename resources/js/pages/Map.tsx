@@ -1,56 +1,22 @@
 import axios from '@/bootstrap';
 import LocationSearch from '@/components/LocationSearch';
+import LocationPrompt from '@/components/Map/LocationPrompt';
+import MapSidebar from '@/components/Map/MapSidebar';
+import RadiusControl from '@/components/Map/RadiusControl';
 import PageTransition from '@/components/PageTransition';
-import UserList from '@/components/UserList';
 import AppLayout from '@/Layouts/AppLayout';
 import { NearbyUsersResponse, UserMarker } from '@/types/location';
+import {
+    createCircleGeoJSON,
+    getMinutesSinceLastSeen,
+} from '@/utils/mapHelpers';
 import { router, usePage } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { Users } from 'lucide-react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
-
-function getMinutesSinceLastSeen(
-    lastSeenAt: string | null | undefined,
-): number {
-    if (!lastSeenAt) return Infinity;
-    const lastSeen = new Date(lastSeenAt);
-    const now = new Date();
-    return Math.floor((now.getTime() - lastSeen.getTime()) / 1000 / 60);
-}
-
-// Create a circle polygon from center point and radius in kilometers
-function createCircleGeoJSON(
-    lng: number,
-    lat: number,
-    radiusInKm: number,
-): GeoJSON.Feature<GeoJSON.Polygon> {
-    const points = 64;
-    const coords: [number, number][] = [];
-    const distanceX = radiusInKm / (111.32 * Math.cos((lat * Math.PI) / 180));
-    const distanceY = radiusInKm / 110.574;
-
-    for (let i = 0; i < points; i++) {
-        const theta = (i / points) * (2 * Math.PI);
-        const x = distanceX * Math.cos(theta);
-        const y = distanceY * Math.sin(theta);
-        coords.push([lng + x, lat + y]);
-    }
-    coords.push(coords[0]); // Close the polygon
-
-    return {
-        type: 'Feature',
-        properties: {},
-        geometry: {
-            type: 'Polygon',
-            coordinates: [coords],
-        },
-    };
-}
 
 interface PageProps {
     auth?: {
@@ -750,196 +716,18 @@ export default function Map() {
                     </div>
                 )}
 
-                <AnimatePresence>
-                    {!locationGranted && !loading && !error && (
-                        <motion.div
-                            initial={{ opacity: 0, y: -20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -20 }}
-                            transition={{
-                                type: 'spring',
-                                stiffness: 300,
-                                damping: 30,
-                            }}
-                            className="absolute top-4 left-1/2 z-10 w-[calc(100%-2rem)] max-w-xs -translate-x-1/2 rounded-lg bg-white p-3 shadow-lg md:top-20 md:left-4 md:w-auto md:translate-x-0 md:p-4"
-                        >
-                            <div className="flex items-start gap-2 md:gap-3">
-                                <div className="flex-shrink-0">
-                                    <svg
-                                        className="h-5 w-5 text-blue-600 md:h-6 md:w-6"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                                        />
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                                        />
-                                    </svg>
-                                </div>
-                                <div className="flex-1">
-                                    <h4 className="mb-1 text-xs font-semibold text-gray-900 md:text-sm">
-                                        {isAuthenticated
-                                            ? 'Enable Location'
-                                            : 'Share Your Location'}
-                                    </h4>
-                                    <p className="mb-2 text-xs text-gray-600 md:mb-3">
-                                        {isAuthenticated
-                                            ? 'Find users near you by enabling location access'
-                                            : 'Log in to share your location and find people nearby'}
-                                    </p>
-                                    <button
-                                        onClick={requestLocation}
-                                        className="w-full rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700 md:px-4 md:py-2 md:text-sm"
-                                    >
-                                        {isAuthenticated
-                                            ? 'Enable Location'
-                                            : 'Log In'}
-                                    </button>
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                <AnimatePresence>
-                    {loading && (
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            transition={{
-                                type: 'spring',
-                                stiffness: 300,
-                                damping: 30,
-                            }}
-                            className="absolute top-4 left-1/2 z-30 -translate-x-1/2 rounded-lg bg-gray-900/90 px-3 py-2 text-xs text-white shadow-lg md:px-4 md:text-sm"
-                        >
-                            <div className="flex items-center gap-2">
-                                <div className="h-3 w-3 animate-spin rounded-full border-b-2 border-white md:h-4 md:w-4"></div>
-                                <span className="whitespace-nowrap">
-                                    Getting your location...
-                                </span>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                <AnimatePresence>
-                    {error && (
-                        <motion.div
-                            initial={{ opacity: 0, y: -20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -20 }}
-                            transition={{
-                                type: 'spring',
-                                stiffness: 300,
-                                damping: 30,
-                            }}
-                            className="absolute top-4 left-1/2 z-30 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 rounded-lg bg-red-600/90 px-3 py-2 text-white shadow-lg md:px-4 md:py-3"
-                        >
-                            <div className="flex gap-2 md:gap-3">
-                                <svg
-                                    className="mt-0.5 h-4 w-4 flex-shrink-0 md:h-5 md:w-5"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                                    />
-                                </svg>
-                                <div className="flex-1 space-y-1 md:space-y-2">
-                                    <p className="text-xs md:text-sm">
-                                        {error}
-                                    </p>
-                                    {locationRequested && !locationGranted && (
-                                        <button
-                                            onClick={requestLocation}
-                                            className="rounded bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 md:px-3 md:text-sm"
-                                        >
-                                            Try Again
-                                        </button>
-                                    )}
-                                    {locationGranted && (
-                                        <p className="text-xs opacity-90">
-                                            You can still browse the map and
-                                            search for users in other locations.
-                                        </p>
-                                    )}
-                                </div>
-                                <button
-                                    onClick={() => setError(null)}
-                                    className="flex-shrink-0 text-white transition-colors hover:text-gray-200"
-                                >
-                                    <svg
-                                        className="h-4 w-4 md:h-5 md:w-5"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M6 18L18 6M6 6l12 12"
-                                        />
-                                    </svg>
-                                </button>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                <LocationPrompt
+                    isAuthenticated={isAuthenticated}
+                    locationGranted={locationGranted}
+                    loading={loading}
+                    error={error}
+                    locationRequested={locationRequested}
+                    onRequestLocation={requestLocation}
+                    onDismissError={() => setError(null)}
+                />
 
                 {/* Radius Control - Top Left */}
-                <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{
-                        type: 'spring',
-                        stiffness: 300,
-                        damping: 30,
-                        delay: 0.1,
-                    }}
-                    className="absolute top-16 left-2 z-10 w-[calc(100%-1rem)] max-w-[200px] rounded-lg bg-white p-2 shadow-lg md:top-4 md:left-4 md:max-w-xs md:p-4"
-                >
-                    <div className="space-y-1 md:space-y-2">
-                        <div className="flex items-center justify-between">
-                            <label className="text-xs font-semibold text-gray-700 md:text-sm">
-                                Radius
-                            </label>
-                            <span className="text-xs font-medium text-blue-600 md:text-sm">
-                                {radius} km
-                            </span>
-                        </div>
-                        <input
-                            type="range"
-                            min="1"
-                            max="50"
-                            value={radius}
-                            onChange={(e) => setRadius(Number(e.target.value))}
-                            className="slider h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-gray-200 md:h-2"
-                            style={{
-                                background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(radius / 50) * 100}%, #e5e7eb ${(radius / 50) * 100}%, #e5e7eb 100%)`,
-                            }}
-                        />
-                        <div className="flex justify-between text-[10px] text-gray-500 md:text-xs">
-                            <span>1 km</span>
-                            <span>50 km</span>
-                        </div>
-                    </div>
-                </motion.div>
+                <RadiusControl radius={radius} onChange={setRadius} />
 
                 {/* Info Panel - Bottom Left (hidden on mobile) */}
                 <div className="absolute bottom-4 left-4 z-10 hidden space-y-0.5 rounded-lg bg-gray-900/90 px-3 py-1.5 text-xs text-white shadow-lg md:block">
@@ -948,147 +736,20 @@ export default function Map() {
                     <div>Zoom: {zoom.toFixed(2)}</div>
                 </div>
 
-                {/* Toggle Sidebar Button - Mobile Only */}
-                <motion.button
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                    onClick={() => setShowSidebar(!showSidebar)}
-                    className="absolute right-4 bottom-4 z-20 rounded-full bg-blue-600 p-3 text-white shadow-lg transition-colors hover:bg-blue-700 md:hidden"
-                    aria-label="Toggle user list"
-                >
-                    <svg
-                        className="h-6 w-6"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        {showSidebar ? (
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M6 18L18 6M6 6l12 12"
-                            />
-                        ) : (
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                            />
-                        )}
-                    </svg>
-                </motion.button>
-
-                {/* User List Sidebar - Right */}
-                <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{
-                        type: 'spring',
-                        stiffness: 300,
-                        damping: 30,
-                        delay: 0.2,
-                    }}
-                    className={`fixed right-0 bottom-0 z-30 flex max-h-[70vh] w-full flex-col overflow-y-auto bg-white shadow-2xl transition-transform duration-300 ease-in-out md:relative md:right-auto md:bottom-auto md:z-auto md:max-h-screen md:w-80 ${showSidebar ? 'translate-y-0' : 'translate-y-full md:translate-y-0'} rounded-t-2xl md:rounded-none`}
-                >
-                    <div className="sticky top-0 z-20 border-b border-gray-200 bg-white px-3 py-2 md:px-4 md:py-3">
-                        <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                                <h2 className="text-base font-semibold text-gray-900 md:text-lg">
-                                    {locationGranted
-                                        ? 'Nearby Users'
-                                        : 'All Users'}
-                                </h2>
-                                <div className="mt-0.5 text-xs text-gray-500 md:mt-1 md:text-sm">
-                                    {fetchingNearby ? (
-                                        <span className="inline-flex items-center gap-1">
-                                            <div className="h-3 w-3 animate-spin rounded-full border-b-2 border-gray-600"></div>
-                                            Loading...
-                                        </span>
-                                    ) : locationGranted ? (
-                                        `${nearby.length} ${nearby.length === 1 ? 'person' : 'people'} within ${radius} km`
-                                    ) : (
-                                        `${allUsers.length} ${allUsers.length === 1 ? 'user' : 'users'} nearby`
-                                    )}
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => setShowSidebar(false)}
-                                className="p-1 text-gray-400 hover:text-gray-600 md:hidden"
-                                aria-label="Close user list"
-                            >
-                                <svg
-                                    className="h-6 w-6"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M6 18L18 6M6 6l12 12"
-                                    />
-                                </svg>
-                            </button>
-                        </div>
-
-                        {/* Friends Filter Toggle */}
-                        {isAuthenticated && (
-                            <div className="mt-2 flex gap-2">
-                                <button
-                                    onClick={() => setShowOnlyFriends(false)}
-                                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                                        !showOnlyFriends
-                                            ? 'bg-blue-600 text-white shadow-md'
-                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                    }`}
-                                >
-                                    Всі
-                                </button>
-                                <button
-                                    onClick={() => setShowOnlyFriends(true)}
-                                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                                        showOnlyFriends
-                                            ? 'bg-blue-600 text-white shadow-md'
-                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                    }`}
-                                >
-                                    <Users className="size-3" />
-                                    Друзі
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                    <div className="flex-1 overflow-y-auto">
-                        <UserList
-                            users={locationGranted ? nearby : allUsers}
-                            isLoading={fetchingNearby}
-                            onUserClick={handleUserClick}
-                            isAuthenticated={isAuthenticated}
-                            showOnlyFriends={showOnlyFriends}
-                            currentUserId={currentUserId}
-                        />
-                    </div>
-                </motion.div>
-
-                {/* Overlay for mobile sidebar */}
-                <AnimatePresence>
-                    {showSidebar && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            className="fixed inset-0 z-20 bg-black/50 md:hidden"
-                            onClick={() => setShowSidebar(false)}
-                        />
-                    )}
-                </AnimatePresence>
+                <MapSidebar
+                    allUsers={allUsers}
+                    nearby={nearby}
+                    locationGranted={locationGranted}
+                    fetchingNearby={fetchingNearby}
+                    isAuthenticated={isAuthenticated}
+                    showSidebar={showSidebar}
+                    showOnlyFriends={showOnlyFriends}
+                    radius={radius}
+                    currentUserId={currentUserId}
+                    onUserClick={handleUserClick}
+                    onToggleSidebar={() => setShowSidebar(!showSidebar)}
+                    onToggleFriendsFilter={setShowOnlyFriends}
+                />
             </PageTransition>
         </AppLayout>
     );
