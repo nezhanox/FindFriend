@@ -84,7 +84,7 @@
   },
   "lint-staged": {
     "*.php": [
-      "bash -c 'if ! docker compose ps app --status running 2>/dev/null | grep -q \"app\"; then echo \"\\n❌ Docker app service is not running. Start it with: docker compose up -d\\n\" >&2; exit 1; fi; for file in \"$@\"; do docker compose exec -T app vendor/bin/pint \"${file#$PWD/}\" || exit 1; done' _",
+      "bash -c 'if ! docker compose ps laravel.test --status running 2>/dev/null | grep -q \"laravel.test\"; then echo \"\\n❌ Docker laravel.test service is not running. Start it with: docker compose up -d\\n\" >&2; exit 1; fi; for file in \"$@\"; do docker compose exec -T laravel.test vendor/bin/pint \"${file#$PWD/}\" || exit 1; done' _",
       "bash -c 'for file in \"$@\"; do if grep -En \"\\b(dd|dump|ds|ray)\\(\" \"$file\" 2>/dev/null; then echo \"\\n❌ Debug function found in $file\\n\" >&2; exit 1; fi; done' _"
     ],
     "*.{js,jsx,ts,tsx}": [
