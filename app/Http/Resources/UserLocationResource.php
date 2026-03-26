@@ -9,9 +9,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class UserLocationResource extends JsonResource
 {
+    /** @return array<string, mixed> */
     public function toArray($request): array
     {
-        /** @var UserLocation|JsonResource $this */
+        /** @var UserLocation $this */
 
         return [
             'lat' => $this->lat,

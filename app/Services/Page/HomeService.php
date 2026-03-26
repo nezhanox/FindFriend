@@ -8,6 +8,7 @@ use App\Models\UserLocation;
 
 class HomeService
 {
+    /** @return array{lat: mixed, lng: mixed}|null */
     public function getSavedLocation(?int $currentUserId): ?array
     {
         $userLocation = UserLocation::query()
