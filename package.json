@@ -84,8 +84,8 @@
   },
   "lint-staged": {
     "*.php": [
-      "bash -c 'for file in \"$@\"; do if docker compose ps app --status running 2>/dev/null | grep -q \"app\"; then docker compose exec -T app vendor/bin/pint \"${file#$PWD/}\"; else ./vendor/bin/pint \"${file#$PWD/}\"; fi || exit 1; done' _",
-      "bash -c 'if grep -En \"\\b(dd|dump|ds|ray)\\(\" \"$0\"; then exit 1; fi'"
+      "bash -c 'if ! docker compose ps app --status running 2>/dev/null | grep -q \"app\"; then echo \"\\n❌ Docker app service is not running. Start it with: docker compose up -d\\n\" >&2; exit 1; fi; for file in \"$@\"; do docker compose exec -T app vendor/bin/pint \"${file#$PWD/}\" || exit 1; done' _",
+      "bash -c 'for file in \"$@\"; do if grep -En \"\\b(dd|dump|ds|ray)\\(\" \"$file\" 2>/dev/null; then echo \"\\n❌ Debug function found in $file\\n\" >&2; exit 1; fi; done' _"
     ],
     "*.{js,jsx,ts,tsx}": [
       "eslint --fix",

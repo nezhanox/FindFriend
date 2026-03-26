@@ -47,6 +47,15 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Node dependencies
+        run: npm ci
+
       - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
 
@@ -68,15 +77,12 @@ jobs:
       - name: Run migrations
         run: php artisan migrate --force
 
-      - name: Source environment and run checks
+      - name: Run checks
         run: |
-          # Load .env file into environment
           set -a
           source .env
           set +a
-
-          # Run unified checks with environment loaded
-          USE_DOCKER=false ./scripts/checks.sh ci
+          ./scripts/checks.sh
 
   # Build and push Docker image
   build:

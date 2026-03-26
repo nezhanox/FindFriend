@@ -1,4 +1,25 @@
 #!/bin/sh
 
-# Run unified checks in dev mode
-./scripts/checks.sh dev
+if ! docker compose ps app --status running 2>/dev/null | grep -q "app"; then
+  echo ""
+  echo "❌ Docker app service is not running."
+  echo "   Start it with: docker compose up -d"
+  echo ""
+  exit 1
+fi
+
+echo "🔍 Running PHPStan..."
+docker compose exec -T app php vendor/bin/phpstan analyse --memory-limit=2G --no-progress
+if [ $? -ne 0 ]; then
+  echo "❌ PHPStan failed"
+  exit 1
+fi
+
+echo "🧪 Running tests..."
+docker compose exec -T app php vendor/bin/pest --colors=always --compact
+if [ $? -ne 0 ]; then
+  echo "❌ Tests failed"
+  exit 1
+fi
+
+echo "✅ All pre-push checks passed"

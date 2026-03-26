@@ -1,18 +1,16 @@
-name: tests
+name: Tests
+
 on:
-  push:
-    branches:
-      - develop
-      - main
   pull_request:
     branches:
-      - develop
       - main
+      - develop
 
 jobs:
   ci:
+    name: Tests & Quality Checks
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgis/postgis:16-3.4
@@ -27,41 +25,37 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: 8.4
           tools: composer:v2
-          coverage: xdebug
-          extensions: pdo, pgsql
-      
+          extensions: pdo, pgsql, redis, zip, bcmath, intl, gd, opcache
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
-      
-      - name: Install Node Dependencies
+
+      - name: Install Node dependencies
         run: npm ci
-      
-      - name: Install Dependencies
+
+      - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
-      
-      - name: Build Assets
-        run: npm run build
-      
-      - name: Copy Environment File
+
+      - name: Copy environment file
         run: cp .env.example .env
-      
-      - name: Generate Application Key
+
+      - name: Generate application key
         run: php artisan key:generate
-      
-      - name: Set Testing Environment
+
+      - name: Set testing environment
         run: |
           echo "DB_CONNECTION=pgsql" >> .env
           echo "DB_HOST=localhost" >> .env
@@ -69,9 +63,9 @@ jobs:
           echo "DB_DATABASE=testing" >> .env
           echo "DB_USERNAME=postgres" >> .env
           echo "DB_PASSWORD=password" >> .env
-      
-      - name: Run Migrations
+
+      - name: Run migrations
         run: php artisan migrate --force
-      
-      - name: Tests
-        run: ./vendor/bin/pest
+
+      - name: Run checks
+        run: ./scripts/checks.sh
