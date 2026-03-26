@@ -25,7 +25,7 @@ class HomeController extends Controller
             ->with('user:id,name,avatar,age,gender,last_seen_at')
             ->get();
 
-        $allUsers = UserLocationResource::collection($allUsers);
+        $allUsers = UserLocationResource::collection($allUsers)->resolve();
 
         $savedLocation = $this->homeService->getSavedLocation($currentUserId);
 
