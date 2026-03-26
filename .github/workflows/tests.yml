@@ -46,9 +46,6 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
-      - name: Build frontend assets
-        run: npm run build
-
       - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
 
@@ -57,6 +54,9 @@ jobs:
 
       - name: Generate application key
         run: php artisan key:generate
+
+      - name: Build frontend assets
+        run: npm run build
 
       - name: Set testing environment
         run: |
