@@ -18,6 +18,8 @@ Route::get('/health', function () {
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
+Route::get('/users/{user}', [ProfileController::class, 'show'])->name('profile.show');
+
 Route::middleware('auth')->group(function () {
     // Profile routes
     Route::prefix('profile')->group(function () {
@@ -25,8 +27,6 @@ Route::middleware('auth')->group(function () {
         Route::delete('/avatar', [ProfileController::class, 'deleteAvatar'])->name('profile.delete-avatar');
         Route::patch('/visibility', [ProfileController::class, 'updateVisibility'])->name('profile.visibility');
     });
-
-    Route::get('/users/{user}', [ProfileController::class, 'show'])->name('profile.show');
 
     // Chat routes
     Route::prefix('chat')->group(function () {
