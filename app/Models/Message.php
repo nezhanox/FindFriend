@@ -36,6 +36,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class Message extends Model
 {
+    /** @use HasFactory<\Database\Factories\MessageFactory> */
     use HasFactory;
 
     /**

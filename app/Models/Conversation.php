@@ -38,6 +38,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Conversation extends Model
 {
+    /** @use HasFactory<\Database\Factories\ConversationFactory> */
     use HasFactory;
 
     /**
