@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Domain\Activity\ValueObjects\ActorSnapshot;
 use App\Enums\ActivityType;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
@@ -29,6 +30,9 @@ use Illuminate\Support\Carbon;
  */
 class ActivityFeedEntry extends Model
 {
+    /** @use HasFactory<\Database\Factories\ActivityFeedEntryFactory> */
+    use HasFactory;
+
     public $timestamps = false;
 
     public $incrementing = false;
