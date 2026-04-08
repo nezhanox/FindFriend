@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Friendship;
 
+use App\Domain\Activity\Events\FriendshipAccepted;
 use App\Enums\FriendshipStatus;
 use App\Models\Friendship;
 use App\Models\User;
@@ -29,6 +30,8 @@ class AcceptFriendRequestAction
         }
 
         $friendship->update(['status' => FriendshipStatus::Accepted]);
+
+        event(FriendshipAccepted::fromFriendship($friendship));
 
         return response()->json(['message' => 'Запрошення прийнято']);
     }

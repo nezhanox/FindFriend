@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Friendship;
 
+use App\Domain\Activity\Events\FriendRequestSent;
 use App\Enums\FriendshipStatus;
 use App\Models\Friendship;
 use App\Models\User;
@@ -44,9 +45,13 @@ class SendFriendRequestAction
                 FriendshipStatus::Accepted => response()->json([
                     'message' => 'Цей користувач вже у вашому списку друзів',
                 ], 400),
-                FriendshipStatus::Rejected => (function () use ($existing): JsonResponse {
+                FriendshipStatus::Rejected => (function () use ($existing, $user, $friendId): JsonResponse {
                     $existing->restore();
                     $existing->update(['status' => FriendshipStatus::Pending]);
+
+                    /** @var User $receiver */
+                    $receiver = User::query()->findOrFail($friendId);
+                    event(new FriendRequestSent(sender: $user, receiver: $receiver));
 
                     return response()->json(['message' => 'Запрошення надіслано']);
                 })(),
@@ -58,6 +63,10 @@ class SendFriendRequestAction
             'friend_id' => $friendId,
             'status' => FriendshipStatus::Pending,
         ]);
+
+        /** @var User $receiver */
+        $receiver = User::query()->findOrFail($friendId);
+        event(new FriendRequestSent(sender: $user, receiver: $receiver));
 
         return response()->json(['message' => 'Запрошення надіслано']);
     }
