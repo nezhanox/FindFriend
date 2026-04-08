@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ActivityFeedController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\ConversationController;
 use App\Http\Controllers\FriendshipController;
@@ -46,6 +47,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/mark-all-as-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-as-read');
         Route::delete('/{notification}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
     });
+
+    // Activity Feed
+    Route::get('/feed', [ActivityFeedController::class, 'index'])->name('feed.index');
 
     // Friendship routes
     Route::prefix('friends')->group(function () {
