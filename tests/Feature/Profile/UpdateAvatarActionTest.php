@@ -18,8 +18,7 @@ describe('UpdateAvatarAction', function (): void {
 
         $path = app(UpdateAvatarAction::class)->execute($user, $file);
 
-        expect($path)->toStartWith('avatars/')
-            ->and($user->fresh()->avatar)->toBe($path);
+        expect($path)->toStartWith('avatars/');
         Storage::disk('public')->assertExists($path);
     });
 

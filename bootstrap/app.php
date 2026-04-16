@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Exceptions\Friendship\CannotAddSelfException;
 use App\Exceptions\Friendship\FriendshipAlreadyExistsException;
 use App\Exceptions\Friendship\FriendshipNotFoundException;

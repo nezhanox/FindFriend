@@ -19,10 +19,6 @@ class UpdateAvatarAction
             Storage::disk('public')->delete($user->avatar);
         }
 
-        $path = $file->store('avatars', 'public');
-
-        $user->update(['avatar' => $path]);
-
-        return (string) $path;
+        return (string) $file->store('avatars', 'public');
     }
 }
