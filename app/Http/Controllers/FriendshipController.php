@@ -6,15 +6,13 @@ namespace App\Http\Controllers;
 
 use App\Actions\Friendship\AcceptFriendRequestAction;
 use App\Actions\Friendship\RejectFriendRequestAction;
+use App\Actions\Friendship\RemoveFriendAction;
 use App\Actions\Friendship\SendFriendRequestAction;
 use App\Enums\FriendshipStatus;
-use App\Exceptions\Friendship\CannotAddSelfException;
-use App\Exceptions\Friendship\FriendshipAlreadyExistsException;
-use App\Exceptions\Friendship\FriendshipNotFoundException;
+use App\Http\Requests\Friendship\SendFriendRequestRequest;
 use App\Models\Friendship;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class FriendshipController extends Controller
@@ -66,20 +64,12 @@ class FriendshipController extends Controller
     /**
      * Send a friend request.
      */
-    public function store(Request $request, SendFriendRequestAction $sendRequest): JsonResponse
+    public function store(SendFriendRequestRequest $request, SendFriendRequestAction $sendRequest): JsonResponse
     {
-        $validated = $request->validate([
-            'friend_id' => ['required', 'integer', 'exists:users,id'],
-        ]);
-
         /** @var User $user */
         $user = Auth::user();
 
-        try {
-            $friendship = $sendRequest->execute($user, (int) $validated['friend_id']);
-        } catch (CannotAddSelfException|FriendshipAlreadyExistsException $e) {
-            return response()->json(['message' => $e->getMessage()], 400);
-        }
+        $friendship = $sendRequest->execute($user, (int) $request->validated('friend_id'));
 
         return response()->json(['message' => 'Запрошення надіслано', 'id' => $friendship->getKey()]);
     }
@@ -92,11 +82,7 @@ class FriendshipController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
-        try {
-            $acceptRequest->execute($user, $requestId);
-        } catch (FriendshipNotFoundException) {
-            return response()->json(['message' => 'Запрошення не знайдено'], 404);
-        }
+        $acceptRequest->execute($user, $requestId);
 
         return response()->json(['message' => 'Запрошення прийнято']);
     }
@@ -109,11 +95,7 @@ class FriendshipController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
-        try {
-            $rejectRequest->execute($user, $requestId);
-        } catch (FriendshipNotFoundException) {
-            return response()->json(['message' => 'Запрошення не знайдено'], 404);
-        }
+        $rejectRequest->execute($user, $requestId);
 
         return response()->json(['message' => 'Запрошення відхилено']);
     }
@@ -149,26 +131,14 @@ class FriendshipController extends Controller
     }
 
     /**
-     * Remove a friend or cancel friend request.
+     * Remove a friend or cancel an outgoing friend request.
      */
-    public function destroy(int $friendId): JsonResponse
+    public function destroy(int $friendId, RemoveFriendAction $removeFriend): JsonResponse
     {
+        /** @var User $user */
         $user = Auth::user();
 
-        $deleted = Friendship::query()
-            ->where(function ($query) use ($user, $friendId): void {
-                $query->where('user_id', $user->getKey())
-                    ->where('friend_id', $friendId);
-            })
-            ->orWhere(function ($query) use ($user, $friendId): void {
-                $query->where('user_id', $friendId)
-                    ->where('friend_id', $user->getKey());
-            })
-            ->delete();
-
-        if ($deleted === 0) {
-            return response()->json(['message' => 'Дружбу не знайдено'], 404);
-        }
+        $removeFriend->execute($user, $friendId);
 
         return response()->json(['message' => 'Видалено']);
     }
