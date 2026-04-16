@@ -7,6 +7,8 @@ namespace App\Http\Controllers;
 use App\Actions\Chat\CreateConversationAction;
 use App\Actions\Chat\MarkMessagesAsReadAction;
 use App\Events\UserTyping;
+use App\Http\Requests\Chat\ConversationTypingRequest;
+use App\Http\Requests\Chat\CreateConversationRequest;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\User;
@@ -64,14 +66,12 @@ class ConversationController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        // Authorize: user must be part of the conversation
         abort_unless(
             $conversation->user_id === $user->getKey() || $conversation->recipient_id === $user->getKey(),
             403,
             'Unauthorized access to conversation'
         );
 
-        // Mark messages as read
         app(MarkMessagesAsReadAction::class)->execute($conversation, $user);
 
         $messages = $conversation->messages()
@@ -109,15 +109,11 @@ class ConversationController extends Controller
     /**
      * Create a new conversation with a user.
      */
-    public function store(Request $request, CreateConversationAction $createConversation): JsonResponse
+    public function store(CreateConversationRequest $request, CreateConversationAction $createConversation): JsonResponse
     {
-        $request->validate([
-            'recipient_id' => ['required', 'integer', 'exists:users,id'],
-        ]);
-
         /** @var User $user */
         $user = $request->user();
-        $recipient = User::query()->findOrFail($request->input('recipient_id'));
+        $recipient = User::query()->findOrFail($request->validated('recipient_id'));
 
         $conversation = $createConversation->execute($user, $recipient);
 
@@ -129,16 +125,11 @@ class ConversationController extends Controller
     /**
      * Broadcast typing status in a conversation.
      */
-    public function typing(Request $request, Conversation $conversation): JsonResponse
+    public function typing(ConversationTypingRequest $request, Conversation $conversation): JsonResponse
     {
-        $request->validate([
-            'typing' => ['required', 'boolean'],
-        ]);
-
         /** @var User $user */
         $user = $request->user();
 
-        // Authorize: user must be part of the conversation
         abort_unless(
             $conversation->user_id === $user->getKey() || $conversation->recipient_id === $user->getKey(),
             403,
