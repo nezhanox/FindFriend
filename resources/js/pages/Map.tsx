@@ -503,10 +503,15 @@ export default function Map() {
             popupContent.className = 'text-sm';
 
             if (isCurrentUser) {
-                popupContent.innerHTML = `
-                    <div class="font-semibold text-gray-900">You${user.name ? ` (${user.name})` : ''}</div>
-                    <div class="text-gray-600 mt-1 text-xs">This is your location</div>
-                `;
+                const labelEl = document.createElement('div');
+                labelEl.className = 'font-semibold text-gray-900';
+                labelEl.textContent = user.name ? `You (${user.name})` : 'You';
+                popupContent.appendChild(labelEl);
+
+                const subtitleEl = document.createElement('div');
+                subtitleEl.className = 'text-gray-600 mt-1 text-xs';
+                subtitleEl.textContent = 'This is your location';
+                popupContent.appendChild(subtitleEl);
             } else {
                 const nameEl = document.createElement('div');
                 nameEl.className = 'font-semibold text-gray-900';
