@@ -66,11 +66,7 @@ class ConversationController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        abort_unless(
-            $conversation->user_id === $user->getKey() || $conversation->recipient_id === $user->getKey(),
-            403,
-            'Unauthorized access to conversation'
-        );
+        $this->authorize('view', $conversation);
 
         app(MarkMessagesAsReadAction::class)->execute($conversation, $user);
 
@@ -130,11 +126,7 @@ class ConversationController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        abort_unless(
-            $conversation->user_id === $user->getKey() || $conversation->recipient_id === $user->getKey(),
-            403,
-            'Unauthorized access to conversation'
-        );
+        $this->authorize('view', $conversation);
 
         broadcast(new UserTyping(
             $conversation->getKey(),
