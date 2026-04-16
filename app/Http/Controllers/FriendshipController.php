@@ -8,6 +8,9 @@ use App\Actions\Friendship\AcceptFriendRequestAction;
 use App\Actions\Friendship\RejectFriendRequestAction;
 use App\Actions\Friendship\SendFriendRequestAction;
 use App\Enums\FriendshipStatus;
+use App\Exceptions\Friendship\CannotAddSelfException;
+use App\Exceptions\Friendship\FriendshipAlreadyExistsException;
+use App\Exceptions\Friendship\FriendshipNotFoundException;
 use App\Models\Friendship;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -72,7 +75,13 @@ class FriendshipController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
-        return $sendRequest->execute($user, (int) $validated['friend_id']);
+        try {
+            $friendship = $sendRequest->execute($user, (int) $validated['friend_id']);
+        } catch (CannotAddSelfException|FriendshipAlreadyExistsException $e) {
+            return response()->json(['message' => $e->getMessage()], 400);
+        }
+
+        return response()->json(['message' => 'Запрошення надіслано', 'id' => $friendship->getKey()]);
     }
 
     /**
@@ -83,7 +92,13 @@ class FriendshipController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
-        return $acceptRequest->execute($user, $requestId);
+        try {
+            $acceptRequest->execute($user, $requestId);
+        } catch (FriendshipNotFoundException) {
+            return response()->json(['message' => 'Запрошення не знайдено'], 404);
+        }
+
+        return response()->json(['message' => 'Запрошення прийнято']);
     }
 
     /**
@@ -94,7 +109,13 @@ class FriendshipController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
-        return $rejectRequest->execute($user, $requestId);
+        try {
+            $rejectRequest->execute($user, $requestId);
+        } catch (FriendshipNotFoundException) {
+            return response()->json(['message' => 'Запрошення не знайдено'], 404);
+        }
+
+        return response()->json(['message' => 'Запрошення відхилено']);
     }
 
     /**
@@ -146,14 +167,10 @@ class FriendshipController extends Controller
             ->delete();
 
         if ($deleted === 0) {
-            return response()->json([
-                'message' => 'Дружбу не знайдено',
-            ], 404);
+            return response()->json(['message' => 'Дружбу не знайдено'], 404);
         }
 
-        return response()->json([
-            'message' => 'Видалено',
-        ]);
+        return response()->json(['message' => 'Видалено']);
     }
 
     /**
@@ -175,9 +192,7 @@ class FriendshipController extends Controller
             ->first();
 
         if (! $friendship) {
-            return response()->json([
-                'status' => null,
-            ]);
+            return response()->json(['status' => null]);
         }
 
         return response()->json([
