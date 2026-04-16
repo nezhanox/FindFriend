@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Profile\UpdateVisibilityRequest;
 use App\Http\Requests\UpdateProfileRequest;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -83,20 +83,16 @@ class ProfileController extends Controller
     /**
      * Toggle map visibility for the authenticated user.
      */
-    public function updateVisibility(Request $request): JsonResponse
+    public function updateVisibility(UpdateVisibilityRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'is_visible' => ['required', 'boolean'],
-        ]);
-
         $user = Auth::user();
 
         if ($user->location) {
-            $user->location->update(['is_visible' => $validated['is_visible']]);
+            $user->location->update(['is_visible' => $request->boolean('is_visible')]);
         }
 
         return response()->json([
-            'is_visible' => $validated['is_visible'],
+            'is_visible' => $request->boolean('is_visible'),
         ]);
     }
 }
