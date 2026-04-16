@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Actions\Profile\UpdateAvatarAction;
 use App\Http\Requests\Profile\UpdateVisibilityRequest;
 use App\Http\Requests\UpdateProfileRequest;
 use App\Models\User;
@@ -19,20 +20,13 @@ class ProfileController extends Controller
     /**
      * Update the user's profile information.
      */
-    public function update(UpdateProfileRequest $request): RedirectResponse
+    public function update(UpdateProfileRequest $request, UpdateAvatarAction $updateAvatar): RedirectResponse
     {
         $user = Auth::user();
         $validated = $request->validated();
 
-        // Handle avatar upload
         if ($request->hasFile('avatar')) {
-            // Delete old avatar if exists
-            if ($user->avatar) {
-                Storage::disk('public')->delete($user->avatar);
-            }
-
-            $avatarPath = $request->file('avatar')->store('avatars', 'public');
-            $validated['avatar'] = $avatarPath;
+            $validated['avatar'] = $updateAvatar->execute($user, $request->file('avatar'));
         }
 
         $user->update($validated);
