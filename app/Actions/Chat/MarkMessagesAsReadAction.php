@@ -15,25 +15,18 @@ class MarkMessagesAsReadAction
      */
     public function execute(Conversation $conversation, User $user): int
     {
-        // Find all unread messages in the conversation that were NOT sent by this user
-        $unreadMessages = $conversation->messages()
+        $query = $conversation->messages()
             ->whereNull('read_at')
-            ->where('sender_id', '!=', $user->getKey())
-            ->get();
+            ->where('sender_id', '!=', $user->getKey());
 
-        if ($unreadMessages->isEmpty()) {
+        $count = $query->count();
+
+        if ($count === 0) {
             return 0;
         }
 
-        // Mark them all as read
-        $count = $unreadMessages->count();
-        $now = now();
+        $query->update(['read_at' => now()]);
 
-        foreach ($unreadMessages as $message) {
-            $message->update(['read_at' => $now]);
-        }
-
-        // Broadcast that messages were read
         broadcast(new MessageRead($conversation->getKey(), $user->getKey()))->toOthers();
 
         return $count;

@@ -1,5 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
+use App\Exceptions\Friendship\CannotAddSelfException;
+use App\Exceptions\Friendship\FriendshipAlreadyExistsException;
+use App\Exceptions\Friendship\FriendshipNotFoundException;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\UpdateLastSeenAt;
@@ -39,5 +44,11 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (FriendshipNotFoundException $e) {
+            return response()->json(['message' => $e->getMessage()], 404);
+        });
+
+        $exceptions->render(function (CannotAddSelfException|FriendshipAlreadyExistsException $e) {
+            return response()->json(['message' => $e->getMessage()], 400);
+        });
     })->create();

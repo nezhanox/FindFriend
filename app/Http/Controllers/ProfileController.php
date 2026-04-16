@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Actions\Profile\UpdateAvatarAction;
+use App\Http\Requests\Profile\UpdateVisibilityRequest;
 use App\Http\Requests\UpdateProfileRequest;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -19,20 +20,13 @@ class ProfileController extends Controller
     /**
      * Update the user's profile information.
      */
-    public function update(UpdateProfileRequest $request): RedirectResponse
+    public function update(UpdateProfileRequest $request, UpdateAvatarAction $updateAvatar): RedirectResponse
     {
         $user = Auth::user();
         $validated = $request->validated();
 
-        // Handle avatar upload
         if ($request->hasFile('avatar')) {
-            // Delete old avatar if exists
-            if ($user->avatar) {
-                Storage::disk('public')->delete($user->avatar);
-            }
-
-            $avatarPath = $request->file('avatar')->store('avatars', 'public');
-            $validated['avatar'] = $avatarPath;
+            $validated['avatar'] = $updateAvatar->execute($user, $request->file('avatar'));
         }
 
         $user->update($validated);
@@ -83,20 +77,16 @@ class ProfileController extends Controller
     /**
      * Toggle map visibility for the authenticated user.
      */
-    public function updateVisibility(Request $request): JsonResponse
+    public function updateVisibility(UpdateVisibilityRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'is_visible' => ['required', 'boolean'],
-        ]);
-
         $user = Auth::user();
 
         if ($user->location) {
-            $user->location->update(['is_visible' => $validated['is_visible']]);
+            $user->location->update(['is_visible' => $request->boolean('is_visible')]);
         }
 
         return response()->json([
-            'is_visible' => $validated['is_visible'],
+            'is_visible' => $request->boolean('is_visible'),
         ]);
     }
 }

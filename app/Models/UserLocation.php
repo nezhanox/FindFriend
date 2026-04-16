@@ -82,7 +82,9 @@ class UserLocation extends Model
      */
     protected function updatePostGISLocation(): void
     {
-        $this->attributes['location'] = DB::raw("ST_SetSRID(ST_MakePoint({$this->lng}, {$this->lat}), 4326)");
+        $this->attributes['location'] = DB::raw(
+            sprintf('ST_SetSRID(ST_MakePoint(%f, %f), 4326)', (float) $this->lng, (float) $this->lat)
+        );
     }
 
     /**

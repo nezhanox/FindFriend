@@ -6,23 +6,23 @@ namespace App\Actions\Friendship;
 
 use App\Domain\Activity\Events\FriendRequestSent;
 use App\Enums\FriendshipStatus;
+use App\Exceptions\Friendship\CannotAddSelfException;
+use App\Exceptions\Friendship\FriendshipAlreadyExistsException;
 use App\Models\Friendship;
 use App\Models\User;
-use Illuminate\Http\JsonResponse;
 
 class SendFriendRequestAction
 {
     /**
      * Send or re-send a friend request.
      *
-     * Returns JsonResponse with error (400) or success.
+     * @throws CannotAddSelfException
+     * @throws FriendshipAlreadyExistsException
      */
-    public function execute(User $user, int $friendId): JsonResponse
+    public function execute(User $user, int $friendId): Friendship
     {
         if ($user->getKey() === $friendId) {
-            return response()->json([
-                'message' => 'Ви не можете додати себе в друзі',
-            ], 400);
+            throw new CannotAddSelfException;
         }
 
         $existing = Friendship::query()
@@ -39,26 +39,14 @@ class SendFriendRequestAction
 
         if ($existing) {
             return match ($existing->status) {
-                FriendshipStatus::Pending => response()->json([
-                    'message' => 'Запрошення вже надіслано',
-                ], 400),
-                FriendshipStatus::Accepted => response()->json([
-                    'message' => 'Цей користувач вже у вашому списку друзів',
-                ], 400),
-                FriendshipStatus::Rejected => (function () use ($existing, $user, $friendId): JsonResponse {
-                    $existing->restore();
-                    $existing->update(['status' => FriendshipStatus::Pending]);
-
-                    /** @var User $receiver */
-                    $receiver = User::query()->findOrFail($friendId);
-                    event(new FriendRequestSent(sender: $user, receiver: $receiver));
-
-                    return response()->json(['message' => 'Запрошення надіслано']);
-                })(),
+                FriendshipStatus::Pending => throw new FriendshipAlreadyExistsException('Запрошення вже надіслано'),
+                FriendshipStatus::Accepted => throw new FriendshipAlreadyExistsException('Цей користувач вже у вашому списку друзів'),
+                FriendshipStatus::Rejected => $this->restoreRejected($existing, $user, $friendId),
             };
         }
 
-        Friendship::query()->create([
+        /** @var Friendship $friendship */
+        $friendship = Friendship::query()->create([
             'user_id' => $user->getKey(),
             'friend_id' => $friendId,
             'status' => FriendshipStatus::Pending,
@@ -68,6 +56,18 @@ class SendFriendRequestAction
         $receiver = User::query()->findOrFail($friendId);
         event(new FriendRequestSent(sender: $user, receiver: $receiver));
 
-        return response()->json(['message' => 'Запрошення надіслано']);
+        return $friendship;
+    }
+
+    private function restoreRejected(Friendship $existing, User $user, int $friendId): Friendship
+    {
+        $existing->restore();
+        $existing->update(['status' => FriendshipStatus::Pending]);
+
+        /** @var User $receiver */
+        $receiver = User::query()->findOrFail($friendId);
+        event(new FriendRequestSent(sender: $user, receiver: $receiver));
+
+        return $existing->fresh();
     }
 }

@@ -68,11 +68,7 @@ class NotificationController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        abort_unless(
-            $notification->user_id === $user->getKey(),
-            403,
-            'Unauthorized access to notification'
-        );
+        $this->authorize('manage', $notification);
 
         $this->notificationService->markAsRead($notification);
 
@@ -104,11 +100,7 @@ class NotificationController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        abort_unless(
-            $notification->user_id === $user->getKey(),
-            403,
-            'Unauthorized access to notification'
-        );
+        $this->authorize('manage', $notification);
 
         $this->notificationService->delete($notification);
 

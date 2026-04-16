@@ -158,16 +158,11 @@ export default function Map() {
                             );
                         }
 
-                        const response = await axios.post(
-                            '/api/location/update',
-                            {
-                                lat: userLat,
-                                lng: userLng,
-                                address: address,
-                            },
-                        );
-
-                        console.log('Location updated:', response.data);
+                        await axios.post('/api/location/update', {
+                            lat: userLat,
+                            lng: userLng,
+                            address: address,
+                        });
                     } catch (err: unknown) {
                         console.error('Error updating location:', err);
                         if (
@@ -349,13 +344,11 @@ export default function Map() {
 
             // Update location on server
             try {
-                const response = await axios.post('/api/location/update', {
+                await axios.post('/api/location/update', {
                     lat: selectedLat,
                     lng: selectedLng,
                     address: address,
                 });
-
-                console.log('Location updated:', response.data);
 
                 // Fetch nearby users
                 const nearbyResponse = await axios.get<NearbyUsersResponse>(
@@ -510,16 +503,34 @@ export default function Map() {
             popupContent.className = 'text-sm';
 
             if (isCurrentUser) {
-                popupContent.innerHTML = `
-                    <div class="font-semibold text-gray-900">You${user.name ? ` (${user.name})` : ''}</div>
-                    <div class="text-gray-600 mt-1 text-xs">This is your location</div>
-                `;
+                const labelEl = document.createElement('div');
+                labelEl.className = 'font-semibold text-gray-900';
+                labelEl.textContent = user.name ? `You (${user.name})` : 'You';
+                popupContent.appendChild(labelEl);
+
+                const subtitleEl = document.createElement('div');
+                subtitleEl.className = 'text-gray-600 mt-1 text-xs';
+                subtitleEl.textContent = 'This is your location';
+                popupContent.appendChild(subtitleEl);
             } else {
-                popupContent.innerHTML = `
-                    <div class="font-semibold text-gray-900">${user.name}</div>
-                    ${user.age ? `<div class="text-gray-600 text-xs mt-1">Age: ${user.age}</div>` : ''}
-                    ${user.gender ? `<div class="text-gray-600 text-xs capitalize">Gender: ${user.gender}</div>` : ''}
-                `;
+                const nameEl = document.createElement('div');
+                nameEl.className = 'font-semibold text-gray-900';
+                nameEl.textContent = user.name;
+                popupContent.appendChild(nameEl);
+
+                if (user.age) {
+                    const ageEl = document.createElement('div');
+                    ageEl.className = 'text-gray-600 text-xs mt-1';
+                    ageEl.textContent = `Age: ${user.age}`;
+                    popupContent.appendChild(ageEl);
+                }
+
+                if (user.gender) {
+                    const genderEl = document.createElement('div');
+                    genderEl.className = 'text-gray-600 text-xs capitalize';
+                    genderEl.textContent = `Gender: ${user.gender}`;
+                    popupContent.appendChild(genderEl);
+                }
 
                 // Add chat button for other users
                 const chatButton = document.createElement('button');
@@ -602,14 +613,29 @@ export default function Map() {
             // Create popup content with chat button
             const popupContent = document.createElement('div');
             popupContent.className = 'text-sm';
-            popupContent.innerHTML = `
-                <div class="font-semibold text-gray-900">${user.name}</div>
-                <div class="text-gray-600 mt-1">
-                    Distance: ${user.distance} km
-                </div>
-                ${user.age ? `<div class="text-gray-600">Age: ${user.age}</div>` : ''}
-                ${user.gender ? `<div class="text-gray-600 capitalize">Gender: ${user.gender}</div>` : ''}
-            `;
+            const nameEl = document.createElement('div');
+            nameEl.className = 'font-semibold text-gray-900';
+            nameEl.textContent = user.name;
+            popupContent.appendChild(nameEl);
+
+            const distanceEl = document.createElement('div');
+            distanceEl.className = 'text-gray-600 mt-1';
+            distanceEl.textContent = `Distance: ${user.distance} km`;
+            popupContent.appendChild(distanceEl);
+
+            if (user.age) {
+                const ageEl = document.createElement('div');
+                ageEl.className = 'text-gray-600';
+                ageEl.textContent = `Age: ${user.age}`;
+                popupContent.appendChild(ageEl);
+            }
+
+            if (user.gender) {
+                const genderEl = document.createElement('div');
+                genderEl.className = 'text-gray-600 capitalize';
+                genderEl.textContent = `Gender: ${user.gender}`;
+                popupContent.appendChild(genderEl);
+            }
 
             // Add chat button
             const chatButton = document.createElement('button');
@@ -673,8 +699,6 @@ export default function Map() {
         channel.listen(
             '.LocationUpdated',
             (event: { userId: number; lat: number; lng: number }) => {
-                console.log('Location update received:', event);
-
                 // Update the marker position if it exists
                 const marker = nearbyMarkers.current.get(event.userId);
                 if (marker) {
