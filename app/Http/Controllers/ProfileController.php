@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Actions\Profile\DeleteAvatarAction;
 use App\Actions\Profile\UpdateAvatarAction;
 use App\Http\Requests\Profile\UpdateVisibilityRequest;
 use App\Http\Requests\UpdateProfileRequest;
@@ -11,7 +12,6 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -37,14 +37,12 @@ class ProfileController extends Controller
     /**
      * Delete the user's avatar.
      */
-    public function deleteAvatar(): RedirectResponse
+    public function deleteAvatar(DeleteAvatarAction $deleteAvatar): RedirectResponse
     {
+        /** @var User $user */
         $user = Auth::user();
 
-        if ($user->avatar) {
-            Storage::disk('public')->delete($user->avatar);
-            $user->update(['avatar' => null]);
-        }
+        $deleteAvatar->execute($user);
 
         return redirect()->back()->with('success', 'Аватар видалено');
     }
