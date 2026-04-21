@@ -6,7 +6,6 @@ namespace App\Http\Controllers\Page;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserLocationResource;
-use App\Models\UserLocation;
 use App\Services\Page\HomeService;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -19,13 +18,7 @@ class HomeController extends Controller
     {
         $currentUserId = auth()->id();
 
-        $allUsers = UserLocation::query()
-            ->where('is_visible', true)
-            ->whereHas('user')
-            ->with('user:id,name,avatar,age,gender,last_seen_at')
-            ->get();
-
-        $allUsers = UserLocationResource::collection($allUsers)->resolve();
+        $allUsers = UserLocationResource::collection($this->homeService->getVisibleUsers())->resolve();
 
         $savedLocation = $this->homeService->getSavedLocation($currentUserId);
 
