@@ -16,7 +16,7 @@ class RejectFriendRequestAction
      *
      * @throws FriendshipNotFoundException
      */
-    public function execute(User $user, int $requestId): void
+    public function execute(User $user, int $requestId): bool
     {
         $friendship = Friendship::query()
             ->where('id', $requestId)
@@ -30,5 +30,7 @@ class RejectFriendRequestAction
 
         $friendship->update(['status' => FriendshipStatus::Rejected]);
         $friendship->delete();
+
+        return true;
     }
 }
