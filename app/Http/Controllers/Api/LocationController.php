@@ -9,7 +9,6 @@ use App\Http\Requests\Location\NearbyUsersRequest;
 use App\Http\Requests\Location\UpdateLocationRequest;
 use App\Services\LocationService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Log;
 
 class LocationController extends Controller
 {
@@ -28,22 +27,16 @@ class LocationController extends Controller
      */
     public function update(UpdateLocationRequest $request): JsonResponse
     {
-        try {
-            $userId = $this->locationService->updateLocation(
-                lat: (float) $request->validated('lat'),
-                lng: (float) $request->validated('lng'),
-                address: $request->validated('address'),
-            );
+        $userId = $this->locationService->updateLocation(
+            lat: (float) $request->validated('lat'),
+            lng: (float) $request->validated('lng'),
+            address: $request->validated('address'),
+        );
 
-            return response()->json([
-                'user_id' => $userId,
-                'message' => 'Location updated successfully',
-            ]);
-        } catch (\Throwable $e) {
-            Log::error('Failed to update location', ['error' => $e->getMessage()]);
-
-            return response()->json(['error' => 'Failed to update location'], 500);
-        }
+        return response()->json([
+            'user_id' => $userId,
+            'message' => 'Location updated successfully',
+        ]);
     }
 
     /**
@@ -54,21 +47,15 @@ class LocationController extends Controller
      */
     public function nearby(NearbyUsersRequest $request): JsonResponse
     {
-        try {
-            $users = $this->locationService->findNearby(
-                lat: (float) $request->validated('lat'),
-                lng: (float) $request->validated('lng'),
-                radius: (int) ($request->validated('radius') ?? 5),
-            );
+        $users = $this->locationService->findNearby(
+            lat: (float) $request->validated('lat'),
+            lng: (float) $request->validated('lng'),
+            radius: (int) ($request->validated('radius') ?? 5),
+        );
 
-            return response()->json([
-                'users' => $users,
-                'count' => count($users),
-            ]);
-        } catch (\Throwable $e) {
-            Log::error('Failed to find nearby users', ['error' => $e->getMessage()]);
-
-            return response()->json(['error' => 'Failed to find nearby users'], 500);
-        }
+        return response()->json([
+            'users' => $users,
+            'count' => count($users),
+        ]);
     }
 }
