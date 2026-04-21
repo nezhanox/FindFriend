@@ -15,7 +15,7 @@ class RemoveFriendAction
      *
      * @throws FriendshipNotFoundException
      */
-    public function execute(User $user, int $friendId): void
+    public function execute(User $user, int $friendId): bool
     {
         $deleted = Friendship::query()
             ->where(function ($query) use ($user, $friendId): void {
@@ -31,5 +31,7 @@ class RemoveFriendAction
         if ($deleted === 0) {
             throw new FriendshipNotFoundException;
         }
+
+        return true;
     }
 }
